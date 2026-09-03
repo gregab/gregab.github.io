@@ -1,0 +1,418 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section budget for an APA paper</title>
+<style>
+  :root {
+    --paper: #F2F3EE;
+    --sheet: #FDFDFB;
+    --ink: #22271F;
+    --muted: #737A70;
+    --rule: #CDD2C7;
+    --rule-strong: #A9B0A2;
+    --mark: 200, 206, 78;
+    --quiet: 115, 122, 112;
+    --focus: #3F5D8C;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header { margin-bottom: 28px; max-width: 46ch; }
+  h1 {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 36px;
+    align-items: start;
+  }
+
+  /* ---- controls ---- */
+  .field { margin-bottom: 20px; }
+  .field > label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 7px;
+    color: var(--muted);
+  }
+  .stepper {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--rule-strong);
+    background: var(--sheet);
+    border-radius: 3px;
+    overflow: hidden;
+    width: 100%;
+  }
+  .stepper button {
+    width: 38px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .stepper button:hover { background: rgba(var(--quiet), 0.09); color: var(--ink); }
+  .stepper button:disabled { opacity: 0.3; cursor: default; background: transparent; }
+  .stepper input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-left: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    background: transparent;
+    text-align: center;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 19px;
+    color: var(--ink);
+    padding: 9px 4px;
+    -moz-appearance: textfield;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .check {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .check input { margin: 2px 0 0; accent-color: var(--focus); }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  .total {
+    border-top: 1px solid var(--rule-strong);
+    margin-top: 26px;
+    padding-top: 14px;
+  }
+  .total .n {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 34px;
+    line-height: 1;
+    display: block;
+  }
+  .total .cap { font-size: 13px; color: var(--muted); }
+
+  /* ---- ribbon ---- */
+  .ribbon-holder { position: relative; padding-right: 62px; }
+  .ribbon {
+    position: relative;
+    height: 400px;
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .band {
+    position: absolute;
+    left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border-bottom: 1px solid rgba(var(--quiet), 0.28);
+    overflow: hidden;
+  }
+  .band:last-child { border-bottom: 0; }
+  .band span {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 15px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .band .w { color: var(--muted); font-size: 13px; margin-left: 8px; }
+  .brk {
+    position: absolute;
+    left: 0; right: 0;
+    height: 0;
+    border-top: 1px dashed var(--rule-strong);
+    pointer-events: none;
+  }
+  .brk b {
+    position: absolute;
+    left: calc(100% + 9px);
+    top: -0.7em;
+    font-weight: 400;
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ---- table ---- */
+  table { width: 100%; border-collapse: collapse; margin-top: 26px; }
+  th, td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--rule); }
+  th { font-size: 12.5px; font-weight: 500; color: var(--muted); border-bottom-color: var(--rule-strong); }
+  td.num, th.num { text-align: right; padding-right: 0; padding-left: 10px; white-space: nowrap; }
+  td.num { font-family: "Times New Roman", Times, serif; font-size: 17px; }
+  td .range { color: var(--muted); font-size: 12.5px; font-family: inherit; display: block; }
+  td.para { color: var(--muted); font-size: 13px; }
+  tr.body-row td:first-child { padding-left: 0; }
+
+  .actions { margin-top: 22px; display: flex; gap: 10px; align-items: center; }
+  .btn {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .btn:hover { background: rgba(var(--quiet), 0.08); }
+  .said { font-size: 13px; color: var(--muted); }
+
+  .note {
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+  .note p { margin: 0 0 7px; }
+
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; gap: 26px; }
+    .ribbon { height: 300px; }
+    .ribbon-holder { padding-right: 54px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Section budget</h1>
+    <p class="sub">Set a page target and how many body sections you want. Assumes APA 7 style: 12&nbsp;pt Times New Roman, double-spaced, 1-inch margins.</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="field">
+        <label id="lbl-pages" for="pages">Pages of body text</label>
+        <div class="stepper">
+          <button type="button" id="pages-down" aria-label="Fewer pages">−</button>
+          <input id="pages" type="number" value="4" min="1" max="30" step="0.5" aria-labelledby="lbl-pages">
+          <button type="button" id="pages-up" aria-label="More pages">+</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="lbl-secs" for="secs">Body sections</label>
+        <div class="stepper">
+          <button type="button" id="secs-down" aria-label="Fewer sections">−</button>
+          <input id="secs" type="number" value="3" min="1" max="12" step="1" aria-labelledby="lbl-secs">
+          <button type="button" id="secs-up" aria-label="More sections">+</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="lbl-wpp" for="wpp">Words per page</label>
+        <div class="stepper">
+          <button type="button" id="wpp-down" aria-label="Fewer words per page">−</button>
+          <input id="wpp" type="number" value="250" min="200" max="320" step="5" aria-labelledby="lbl-wpp">
+          <button type="button" id="wpp-up" aria-label="More words per page">+</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" id="head" checked>
+          <span>Leave room for headings and the space they take up</span>
+        </label>
+      </div>
+
+      <div class="total">
+        <span class="n" id="total">1,000</span>
+        <span class="cap" id="total-cap">words total</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="ribbon-holder">
+        <div class="ribbon" id="ribbon" role="img" aria-label="Proportional map of the paper showing where each section falls relative to page breaks"></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Part</th>
+            <th class="num" scope="col">Words</th>
+            <th class="num" scope="col">Paragraphs</th>
+          </tr>
+        </thead>
+        <tbody id="rows" aria-live="polite"></tbody>
+      </table>
+
+      <div class="actions">
+        <button class="btn" id="copy">Copy plan</button>
+        <span class="said" id="said"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <p>250 words per page is the working figure for double-spaced 12&nbsp;pt Times New Roman with 1-inch margins — roughly 23 lines at about 11 words each. A paragraph-heavy page with lots of indents runs closer to 240; a page of unbroken text can reach 280. Nudge the setting if your own drafts consistently come out long or short.</p>
+    <p>Page counts here cover body text only. The title page and reference list sit outside the count in most assignments, but check your prompt.</p>
+    <p>Split: 12% introduction, 10% conclusion, the rest divided evenly across body sections. Ranges allow ±8%, which is about as precise as word targets are worth being.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  var pages = el('pages'), secs = el('secs'), wpp = el('wpp'), head = el('head');
+  var lastPlan = '';
+
+  function clampVal(input) {
+    var v = parseFloat(input.value);
+    var min = parseFloat(input.min), max = parseFloat(input.max);
+    if (isNaN(v)) v = min;
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function step(input, dir) {
+    var s = parseFloat(input.step) || 1;
+    input.value = clampVal(input) + dir * s;
+    render();
+  }
+
+  function commas(n) { return n.toLocaleString('en-US'); }
+
+  function compute() {
+    var p = clampVal(pages), n = Math.round(clampVal(secs)), w = clampVal(wpp);
+    var total = Math.round(p * w);
+
+    // Each level-1 heading occupies a line that mostly isn't text.
+    var headingCost = head.checked ? (n + 1) * 11 : 0;
+    var budget = Math.max(60, total - headingCost);
+
+    var parts = [];
+    parts.push({ name: 'Introduction', share: 0.12 });
+    for (var i = 1; i <= n; i++) parts.push({ name: 'Section ' + i, share: 0.78 / n });
+    parts.push({ name: 'Conclusion', share: 0.10 });
+
+    // Round to 10s, then push the leftover into the largest body section.
+    var sum = 0;
+    parts.forEach(function (part) {
+      part.words = Math.max(40, Math.round(budget * part.share / 10) * 10);
+      sum += part.words;
+    });
+    var drift = budget - sum;
+    if (drift !== 0 && parts.length > 2) {
+      var big = parts[1];
+      for (var j = 1; j <= n; j++) if (parts[j].words > big.words) big = parts[j];
+      big.words = Math.max(40, big.words + Math.round(drift / 10) * 10);
+    }
+
+    parts.forEach(function (part) {
+      part.lo = Math.round(part.words * 0.92 / 5) * 5;
+      part.hi = Math.round(part.words * 1.08 / 5) * 5;
+      part.paras = Math.max(1, Math.round(part.words / 155));
+    });
+
+    return { parts: parts, total: total, pages: p, sections: n, wpp: w };
+  }
+
+  function render() {
+    var d = compute();
+    el('total').textContent = commas(d.total);
+    el('total-cap').textContent = 'words across ' + (d.pages % 1 ? d.pages : d.pages) + (d.pages === 1 ? ' page' : ' pages');
+
+    var sum = d.parts.reduce(function (a, p) { return a + p.words; }, 0);
+
+    // ribbon
+    var ribbon = el('ribbon');
+    ribbon.innerHTML = '';
+    var offset = 0;
+    d.parts.forEach(function (part, i) {
+      var h = part.words / sum * 100;
+      var band = document.createElement('div');
+      band.className = 'band';
+      band.style.top = offset + '%';
+      band.style.height = h + '%';
+      var isBody = i > 0 && i < d.parts.length - 1;
+      var alpha = isBody ? (0.20 + 0.13 * (i % 3)) : 0.07;
+      band.style.background = isBody
+        ? 'rgba(' + getComputedStyle(document.documentElement).getPropertyValue('--mark').trim() + ',' + alpha + ')'
+        : 'rgba(115,122,112,0.10)';
+      band.innerHTML = '<span>' + part.name + '<span class="w">' + commas(part.words) + ' w</span></span>';
+      ribbon.appendChild(band);
+      offset += h;
+    });
+
+    for (var k = 1; k < Math.ceil(d.pages); k++) {
+      var line = document.createElement('div');
+      line.className = 'brk';
+      line.style.top = (k / d.pages * 100) + '%';
+      line.innerHTML = '<b>page ' + (k + 1) + '</b>';
+      ribbon.appendChild(line);
+    }
+
+    // table
+    var rows = el('rows');
+    rows.innerHTML = '';
+    var lines = [];
+    d.parts.forEach(function (part) {
+      var tr = document.createElement('tr');
+      tr.className = 'body-row';
+      tr.innerHTML =
+        '<td>' + part.name + '</td>' +
+        '<td class="num">' + commas(part.words) + '<span class="range">' + commas(part.lo) + '–' + commas(part.hi) + '</span></td>' +
+        '<td class="num para">' + part.paras + '</td>';
+      rows.appendChild(tr);
+      lines.push(part.name + ': ' + part.words + ' words (' + part.lo + '–' + part.hi + '), about ' + part.paras + (part.paras === 1 ? ' paragraph' : ' paragraphs'));
+    });
+
+    lastPlan = d.pages + '-page APA paper, ' + d.sections + ' body section' + (d.sections === 1 ? '' : 's') +
+      ', ' + d.total + ' words total\n\n' + lines.join('\n');
+    el('said').textContent = '';
+  }
+
+  [['pages', 'pages'], ['secs', 'secs'], ['wpp', 'wpp']].forEach(function (pair) {
+    el(pair[0] + '-down').addEventListener('click', function () { step(el(pair[1]), -1); });
+    el(pair[0] + '-up').addEventListener('click', function () { step(el(pair[1]), 1); });
+  });
+  [pages, secs, wpp].forEach(function (input) {
+    input.addEventListener('input', render);
+    input.addEventListener('blur', function () { input.value = clampVal(input); render(); });
+  });
+  head.addEventListener('change', render);
+
+  el('copy').addEventListener('click', function () {
+    var done = function () { el('said').textContent = 'Copied.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lastPlan).then(done, function () { el('said').textContent = 'Copy blocked here — select the table instead.'; });
+    } else {
+      el('said').textContent = 'Copy blocked here — select the table instead.';
+    }
+  });
+
+  render();
+})();
+</script>
