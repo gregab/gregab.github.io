@@ -328,18 +328,24 @@
     for (var i = 1; i <= n; i++) parts.push({ name: 'Section ' + i, share: 0.78 / n });
     parts.push({ name: 'Conclusion', share: 0.10 });
 
-    // Round to 10s, then push the leftover into the largest body section.
+    // Round to 10s with largest-remainder apportionment, so the leftover
+    // is spread one 10-word unit at a time across the parts with the
+    // biggest rounding remainder (ties broken in list order) instead of
+    // being dumped entirely into a single section.
     var sum = 0;
     parts.forEach(function (part) {
-      part.words = Math.max(40, Math.round(budget * part.share / 10) * 10);
+      var exact = budget * part.share;
+      part.words = Math.floor(exact / 10) * 10;
+      part.remainder = exact - part.words;
       sum += part.words;
     });
-    var drift = budget - sum;
-    if (drift !== 0 && parts.length > 2) {
-      var big = parts[1];
-      for (var j = 1; j <= n; j++) if (parts[j].words > big.words) big = parts[j];
-      big.words = Math.max(40, big.words + Math.round(drift / 10) * 10);
-    }
+    var leftoverUnits = Math.round((budget - sum) / 10);
+    parts
+      .map(function (part, idx) { return { part: part, idx: idx }; })
+      .sort(function (a, b) { return b.part.remainder - a.part.remainder || a.idx - b.idx; })
+      .slice(0, Math.max(0, leftoverUnits))
+      .forEach(function (entry) { entry.part.words += 10; });
+    parts.forEach(function (part) { part.words = Math.max(40, part.words); });
 
     parts.forEach(function (part) {
       part.lo = Math.round(part.words * 0.92 / 5) * 5;

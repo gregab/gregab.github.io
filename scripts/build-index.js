@@ -28,8 +28,27 @@ function titleCaseFromFilename(file) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function readPrevious() {
+  try {
+    return JSON.parse(fs.readFileSync(outFile, 'utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeManifest(tools) {
+  const previous = readPrevious();
+  // Keep the old timestamp when the tool list itself hasn't changed, so a
+  // rebuild with no real change doesn't produce a commit every push.
+  const unchanged = previous && JSON.stringify(previous.tools) === JSON.stringify(tools);
+  const generated = unchanged ? previous.generated : new Date().toISOString();
+  const manifest = { generated, tools };
+  fs.writeFileSync(outFile, JSON.stringify(manifest, null, 2) + '\n');
+  console.log(`Wrote ${outFile} with ${tools.length} tool(s).`);
+}
+
 if (!fs.existsSync(toolsDir)) {
-  fs.writeFileSync(outFile, JSON.stringify({ generated: new Date().toISOString(), tools: [] }, null, 2) + '\n');
+  writeManifest([]);
   process.exit(0);
 }
 
@@ -44,6 +63,4 @@ const tools = files.map((file) => {
 
 tools.sort((a, b) => a.title.localeCompare(b.title));
 
-const manifest = { generated: new Date().toISOString(), tools };
-fs.writeFileSync(outFile, JSON.stringify(manifest, null, 2) + '\n');
-console.log(`Wrote ${outFile} with ${tools.length} tool(s).`);
+writeManifest(tools);
