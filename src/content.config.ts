@@ -43,15 +43,21 @@ const pages = defineCollection({
   `note` is Greg's own words and is optional. Most links don't have one, and
   an empty note is better than an invented one.
 
-  Grouping is three deep: category (topic) > section (Podcasts, Articles) >
-  group (usually a person). `order` is the only sort knob — sections and
-  groups inherit the lowest order of the entries inside them.
+  Grouping is two deep: category (topic) > group (the person whose work it
+  is). `order` is the only sort knob — a category inherits the lowest order
+  of the entries inside it. Person names link out to their own sites, which
+  are listed in `src/data/people.ts`.
 
-  Everything in a group is one flat list, whatever its format — a Substack or
-  a Facebook group sits alongside the podcast episodes under the same name,
-  labelled by format rather than pulled out into the heading. A link whose
-  title is just the person's name would only echo the heading above it, so
-  it falls back to its source ("Substack") for link text.
+  Everything under a person is one flat list, whatever its format — a
+  Substack, a Facebook group and four podcast interviews sit together under
+  the one name, each labelled by its own format. A link whose title is just
+  the person's name would only echo the heading above it, so it falls back
+  to its source ("Substack") for link text.
+
+  `section` (Podcasts, Articles) is kept but no longer laid out: splitting a
+  person across two headings buried the person, which is the thing worth
+  finding. It stays on the entries so the distinction isn't lost if it ever
+  earns its place back.
 */
 const resources = defineCollection({
   loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/resources" }),
@@ -59,7 +65,7 @@ const resources = defineCollection({
     title: z.string(),
     url: z.url(),
     category: z.string(),
-    section: z.string(),
+    section: z.string().optional(),
     group: z.string().optional(),
     format: z.enum(["podcast", "article", "newsletter", "group"]),
     source: z.string().optional(),

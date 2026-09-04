@@ -11,12 +11,15 @@ type Props = {
   resource: Resource;
   /** Omit the source when the link text above is already the source. */
   skipSource?: boolean;
+  /** Omit the author when the heading above is already their name. */
+  skipByline?: boolean;
   /** Lead with a separator, for when this sits inline after the link. */
   separator?: boolean;
   class?: string;
 };
 
-const { resource, skipSource, separator, class: className } = Astro.props;
+const { resource, skipSource, skipByline, separator, class: className } =
+  Astro.props;
 
 // The source pages date these to the day, but the day is never what a reader
 // is weighing up. Month and year is the honest, shorter unit.
@@ -32,7 +35,7 @@ const domain = new URL(resource.url).hostname.replace(/^www\./, "");
 
 const parts = [
   skipSource ? undefined : resource.source,
-  resource.byline,
+  skipByline ? undefined : resource.byline,
   resource.episode,
   published,
   resource.duration,

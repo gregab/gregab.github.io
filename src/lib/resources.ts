@@ -1,4 +1,5 @@
 import { getCollection } from "astro:content";
+import { PEOPLE } from "@/data/people";
 
 export type Resource = Awaited<
   ReturnType<typeof getCollection<"resources">>
@@ -7,10 +8,10 @@ export type Resource = Awaited<
 type Entry = { data: Resource };
 
 /**
- * Three levels of nesting: category > section > group. Rather than carry a
- * sort key at each level, everything inherits the lowest `order` of the
- * entries beneath it, so the ordering from the staging folder survives with
- * one number per link.
+ * Two levels of nesting: category > person. Rather than carry a sort key at
+ * each level, a category inherits the lowest `order` of the entries beneath
+ * it, so the ordering from the staging folder survives with one number per
+ * link.
  */
 function groupBy<T extends Entry>(items: T[], key: (item: T) => string) {
   const groups = new Map<string, T[]>();
@@ -23,21 +24,9 @@ function groupBy<T extends Entry>(items: T[], key: (item: T) => string) {
     .map(([name, entries]) => ({
       name,
       entries: entries.sort((a, b) => a.data.order - b.data.order),
-      order: Math.min(...entries.map(e => e.data.order)),
+      order: Math.min(...entries.map((e) => e.data.order)),
     }))
     .sort((a, b) => a.order - b.order);
-}
-
-/**
- * The format a section is mostly made of, so entries that match it can skip a
- * label that would only repeat the heading above them.
- */
-function dominantFormat<T extends Entry>(entries: T[]) {
-  const counts = new Map<string, number>();
-  for (const e of entries) {
-    counts.set(e.data.format, (counts.get(e.data.format) ?? 0) + 1);
-  }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
 /** Slug for the in-page anchor on a category heading. */
@@ -51,13 +40,14 @@ export function anchor(name: string) {
 export async function getResourceTree() {
   const resources = await getCollection("resources");
 
-  return groupBy(resources, r => r.data.category).map(category => ({
+  return groupBy(resources, (r) => r.data.category).map((category) => ({
     ...category,
     id: anchor(category.name),
-    sections: groupBy(category.entries, r => r.data.section).map(section => ({
-      ...section,
-      implied: dominantFormat(section.entries),
-      groups: groupBy(section.entries, r => r.data.group ?? ""),
-    })),
+    groups: groupBy(category.entries, (r) => r.data.group ?? "").map(
+      (group) => ({
+        ...group,
+        url: group.name ? PEOPLE[group.name] : undefined,
+      }),
+    ),
   }));
 }

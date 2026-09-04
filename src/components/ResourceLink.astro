@@ -1,28 +1,30 @@
 ---
 /*
-  One thing worth reading or listening to. The format label only renders when
-  an entry breaks its section's pattern — a label that repeats the heading
-  above it is noise, so a podcast under "Podcasts" goes unlabelled and
-  anything else announces itself.
+  One thing worth reading or listening to. Every entry carries its format
+  label: the list under a person mixes podcasts, articles and newsletters,
+  and with no "Podcasts" heading overhead the label is the only thing that
+  says what a link will hand you.
 */
 import ResourceMeta from "./ResourceMeta.astro";
 import type { Resource } from "@/lib/resources";
 
 type Props = {
   resource: Resource;
-  /** The format the surrounding section already implies. */
-  implied?: string;
   /** The heading this sits under, so the link text can avoid echoing it. */
   groupName?: string;
 };
 
-const { resource, implied, groupName } = Astro.props;
+const { resource, groupName } = Astro.props;
 
-// Shedler's Substack is titled "Jonathan Shedler", which under a heading that
-// already says Jonathan Shedler reads as a stutter. Its source names it just
-// as well, and then the meta line below needn't repeat that either.
+// Under a heading that already says the person's name, repeating it reads as
+// a stutter — Shedler's Substack is titled "Jonathan Shedler", and Sachter's
+// article is bylined to him. The source names the Substack just as well, and
+// the byline is simply dropped.
 const echoesHeading = Boolean(groupName) && resource.title === groupName;
-const label = echoesHeading ? (resource.source ?? resource.title) : resource.title;
+const label = echoesHeading
+  ? (resource.source ?? resource.title)
+  : resource.title;
+const bylineEchoesHeading = Boolean(groupName) && resource.byline === groupName;
 
 const FORMAT_LABEL: Record<Resource["format"], string> = {
   podcast: "Podcast",
@@ -33,13 +35,11 @@ const FORMAT_LABEL: Record<Resource["format"], string> = {
 ---
 
 <li class="my-7 first:mt-0 last:mb-0">
-  {
-    resource.format !== implied && (
-      <p class="font-mono text-muted-foreground mb-1.5 text-[0.7rem] tracking-[0.14em] uppercase">
-        {FORMAT_LABEL[resource.format]}
-      </p>
-    )
-  }
+  <p
+    class="font-mono text-muted-foreground mb-1.5 text-[0.7rem] tracking-[0.14em] uppercase"
+  >
+    {FORMAT_LABEL[resource.format]}
+  </p>
 
   <a
     href={resource.url}
@@ -50,7 +50,12 @@ const FORMAT_LABEL: Record<Resource["format"], string> = {
     {label}
   </a>
 
-  <ResourceMeta resource={resource} skipSource={echoesHeading} class="mt-1.5" />
+  <ResourceMeta
+    resource={resource}
+    skipSource={echoesHeading}
+    skipByline={bylineEchoesHeading}
+    class="mt-1.5"
+  />
 
   {resource.note && <p class="mt-2">{resource.note}</p>}
 </li>

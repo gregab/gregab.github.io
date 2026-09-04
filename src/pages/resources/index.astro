@@ -10,6 +10,12 @@ import config from "@/config";
 
 const categories = await getResourceTree();
 const isEmpty = categories.length === 0;
+
+/* With only one category, its name would just repeat the page title, so the
+   heading only earns its place once there are several to tell apart — and
+   without it the names beneath move up a level rather than skipping one. */
+const showCategories = categories.length > 1;
+const PersonHeading = showCategories ? "h3" : "h2";
 ---
 
 <Layout title={`Resources | ${config.site.title}`}>
@@ -29,10 +35,7 @@ const isEmpty = categories.length === 0;
       ) : (
         categories.map(category => (
           <section class="mb-16 last:mb-4">
-            {/* With only one category, its name would just repeat the page
-                title, so the heading only earns its place once there are
-                multiple to tell apart. */}
-            {categories.length > 1 && (
+            {showCategories && (
               <h2
                 id={category.id}
                 class="border-border mb-9 border-b pb-2 text-2xl font-semibold sm:text-3xl"
@@ -41,37 +44,38 @@ const isEmpty = categories.length === 0;
               </h2>
             )}
 
-            {category.sections.map(section => (
-              <div class="mb-11 last:mb-0">
-                {/* A kicker rather than a heading: it labels what follows
-                    without competing with the names underneath it. */}
-                <h3 class="font-ui text-muted-foreground mb-7 text-xs font-semibold tracking-[0.18em] uppercase">
-                  {section.name}
-                </h3>
-
-                {section.groups.map(group => (
-                  <div class="mb-9 last:mb-0">
-                    {group.name && (
-                      <h4 class="text-xl font-semibold">{group.name}</h4>
+            {category.groups.map(group => (
+              <div class="mb-14 last:mb-0">
+                {group.name && (
+                  <PersonHeading class="text-2xl font-semibold">
+                    {/* The name is the way in to everything else they have
+                        made, so it points at their own site when we know it. */}
+                    {group.url ? (
+                      <a
+                        href={group.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        class="marked text-foreground focus-visible:no-underline"
+                      >
+                        {group.name}
+                      </a>
+                    ) : (
+                      group.name
                     )}
+                  </PersonHeading>
+                )}
 
-                    {/* The rule means "these belong to the name above", so an
-                        ungrouped list sits flush instead. */}
-                    <ul
-                      class:list={[
-                        group.name && "border-border mt-5 border-s ps-5",
-                      ]}
-                    >
-                      {group.entries.map(entry => (
-                        <ResourceLink
-                          resource={entry.data}
-                          implied={section.implied}
-                          groupName={group.name}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                {/* The rule means "these belong to the name above", so an
+                    ungrouped list sits flush instead. */}
+                <ul
+                  class:list={[
+                    group.name && "border-border mt-5 border-s ps-5",
+                  ]}
+                >
+                  {group.entries.map(entry => (
+                    <ResourceLink resource={entry.data} groupName={group.name} />
+                  ))}
+                </ul>
               </div>
             ))}
           </section>
