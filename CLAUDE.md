@@ -39,6 +39,14 @@ portable markdown.
   A file sitting in the staging folder is not consent to publish it; he may be
   mid-draft. If scope is ambiguous, ask.
 - **One-way.** Never write back into the vault.
+- **The prose on the site is Greg's.** Don't write blurbs, link descriptions,
+  page subtitles or any other voice copy for him. Formatting, structure and
+  presentation are yours to design; the words are not. When a design needs
+  descriptive text he hasn't written, use factual metadata about the thing
+  instead — for an outbound link that's the show or publication, author,
+  episode, date, length, domain, which previews it without editorialising. If
+  a slot really needs prose and he hasn't supplied it, leave it empty and tell
+  him.
 - **Proofread before publishing.** Greg drafts fast and expects the publish step
   to catch what he missed. Fix outright errors (typos, missing words, broken
   grammar, wrong proper nouns) as part of the same change and say what you
@@ -47,9 +55,9 @@ portable markdown.
 
 ## What is public right now
 
-The site is deliberately minimal: the homepage bio and `/tools`. Everything else
-is **parked, not deleted** — Greg wants to publish those sections when he has real
-content, so the code and schemas all still exist.
+The site is deliberately minimal: the homepage bio, `/resources` and `/tools`.
+Everything else is **parked, not deleted** — Greg wants to publish those sections
+when he has real content, so the code and schemas all still exist.
 
 Parking uses Astro's own convention: a leading `_` excludes a file or directory
 from routing, and the collection globs (`**/[^_]*.{md,mdx}`) exclude `_`-prefixed
@@ -60,7 +68,6 @@ content. To bring a section back, drop the underscore and re-add its nav item in
 |--------|------|
 | Essays / writing | `src/pages/_writing/` |
 | Books | `src/pages/_books/` |
-| Resources | `src/pages/_resources/` |
 | About | `src/pages/_about.astro`, `src/content/pages/_about.md` |
 | Tags, archives, search | `src/pages/_tags/`, `_archives/`, `_search.astro` |
 | RSS feed | `src/pages/_rss.xml.ts` |
