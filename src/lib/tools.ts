@@ -15,7 +15,20 @@ export interface ToolEntry {
   href: string;
 }
 
-const toolsDir = fileURLToPath(new URL("../../public/tools/", import.meta.url));
+/*
+  Resolve public/tools/ from the project root. import.meta.url alone is not
+  enough: it points at the real source file in `astro dev`, but at a bundled
+  chunk during `astro build`, which silently yielded an empty tool list. Astro
+  runs with cwd at the project root in both modes, so that is the primary
+  lookup, with the module-relative path kept as a fallback.
+*/
+function resolveToolsDir(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "public", "tools"),
+    fileURLToPath(new URL("../../public/tools/", import.meta.url)),
+  ];
+  return candidates.find(dir => fs.existsSync(dir)) ?? null;
+}
 
 function extractTitle(html: string): string | null {
   const m = html.match(/<title>([^<]*)<\/title>/i);
@@ -35,15 +48,20 @@ function titleCaseFromFilename(file: string): string {
 }
 
 export function getTools(): ToolEntry[] {
-  if (!fs.existsSync(toolsDir)) return [];
+  const toolsDir = resolveToolsDir();
+  if (!toolsDir) return [];
 
   const files = fs
     .readdirSync(toolsDir)
     .filter((f) => f.toLowerCase().endsWith(".html"))
     .sort();
 
-  const tools = files.map((file) => {
+  const tools = files.flatMap((file) => {
     const html = fs.readFileSync(path.join(toolsDir, file), "utf8");
+
+    // Redirect stubs left behind by renamed tools are not tools themselves.
+    if (/http-equiv=["']refresh["']/i.test(html)) return [];
+
     const title = extractTitle(html) || titleCaseFromFilename(file);
     const description = extractDescription(html) || "";
     return { file, title, description, href: `/tools/${file}` };

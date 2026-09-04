@@ -40,6 +40,36 @@ portable markdown.
   mid-draft. If scope is ambiguous, ask.
 - **One-way.** Never write back into the vault.
 
+## What is public right now
+
+The site is deliberately minimal: the homepage bio and `/tools`. Everything else
+is **parked, not deleted** — Greg wants to publish those sections when he has real
+content, so the code and schemas all still exist.
+
+Parking uses Astro's own convention: a leading `_` excludes a file or directory
+from routing, and the collection globs (`**/[^_]*.{md,mdx}`) exclude `_`-prefixed
+content. To bring a section back, drop the underscore and re-add its nav item in
+`src/components/Header.astro`.
+
+| Parked | Path |
+|--------|------|
+| Essays / writing | `src/pages/_writing/` |
+| Books | `src/pages/_books/` |
+| Resources | `src/pages/_resources/` |
+| About | `src/pages/_about.astro`, `src/content/pages/_about.md` |
+| Tags, archives, search | `src/pages/_tags/`, `_archives/`, `_search.astro` |
+| RSS feed | `src/pages/_rss.xml.ts` |
+| Placeholder content | `_`-prefixed files under `src/content/*/` |
+
+`features.showArchives` and `features.search` are `false` in
+`astro-paper.config.ts` to match. Layout's RSS autodiscovery tag was removed
+while the feed is parked — restore it when `_rss.xml.ts` comes back, since
+advertising a feed that 404s is worse than advertising none.
+
+**No contact address is published.** Greg does not want his personal Gmail on a
+public page. `socials` in `astro-paper.config.ts` has a commented placeholder for
+a future alias on this domain. Don't add a personal address back.
+
 ## Working on the site
 
 ```bash
@@ -56,6 +86,13 @@ npm run build   # astro check && astro build && pagefind --site dist
 - **Tools** are self-contained HTML in `public/tools/`. `src/lib/tools.ts` discovers
   them at build time by parsing each file's `<title>` and `<meta name="description">`.
   Dropping a file in is the whole workflow — there is no manifest to update.
+  Two gotchas, both already fixed and both easy to reintroduce:
+  - It resolves the directory from `process.cwd()`, **not** from `import.meta.url`.
+    The module-relative path works in `astro dev` but points at a bundled chunk
+    during `astro build`, which silently produces an empty tool list.
+  - Renaming a tool leaves a redirect stub at the old filename so existing links
+    survive. `tools.ts` skips any file containing an `http-equiv="refresh"`, so
+    stubs don't appear as extra tools.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom

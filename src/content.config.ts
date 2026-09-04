@@ -35,7 +35,7 @@ const pages = defineCollection({
 });
 
 const resources = defineCollection({
-  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/resources" }),
+  loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/resources" }),
   schema: z.object({
     title: z.string(),
     url: z.url(),
@@ -46,7 +46,7 @@ const resources = defineCollection({
 });
 
 const books = defineCollection({
-  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/books" }),
+  loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/books" }),
   schema: z.object({
     title: z.string(),
     author: z.string(),

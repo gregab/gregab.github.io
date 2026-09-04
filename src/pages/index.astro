@@ -1,29 +1,21 @@
 ---
-import { getCollection } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
-import IconRss from "@/assets/icons/IconRss.svg";
 import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
-import Card from "@/components/Card.astro";
 import LinkButton from "@/components/LinkButton.astro";
-import { getSortedPosts } from "@/utils/getSortedPosts";
 import { getTools } from "@/lib/tools";
 import { useTranslations } from "@/i18n";
 import config from "@/config";
 
-const { socials, posts: postsConfig } = config;
+const { socials } = config;
 
 const locale = Astro.currentLocale ?? config.site.lang;
 const t = useTranslations(locale);
 
-const essays = await getCollection("essays");
-const sortedEssays = getSortedPosts(essays);
-const recentEssays = sortedEssays.slice(0, postsConfig.perIndex);
-
-const recentTools = getTools().slice(0, 3);
+const tools = getTools();
 
 const homePath = getRelativeLocaleUrl(locale, "");
 ---
@@ -37,53 +29,39 @@ const homePath = getRelativeLocaleUrl(locale, "");
     class="app-layout my-1"
   >
     <section id="hero" class="border-border border-b pt-8 pb-6">
-      <h1 class="my-4 inline-block text-4xl font-bold sm:my-8 sm:text-5xl">
+      <h1 class="my-4 text-4xl font-bold sm:my-8 sm:text-5xl">
         Hey, I'm Greg Bigelow
       </h1>
-      <a
-        target="_blank"
-        href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
-        class="inline-block"
-        aria-label="RSS Feed"
-        title="RSS Feed"
-      >
-        <IconRss
-          width={20}
-          height={20}
-          class="stroke-accent scale-125 stroke-3 rtl:-rotate-90"
-        />
-        <span class="sr-only">RSS Feed</span>
-      </a>
 
-      <p>
-        <!-- PLACEHOLDER BIO — replace with a real one. -->
-        This is a placeholder bio. Greg writes about [topics to fill in],
-        builds small single-page tools when a problem is annoying enough to
-        be worth automating, and occasionally reads a book worth reviewing.
+      <!--
+        Greg's bio, from the Obsidian staging folder (Website/bio.md).
+        His wording, unchanged — only broken into paragraphs for reading.
+      -->
+      <p class="mt-4">
+        I enjoy exploring: the world, myself, and what it means to live a full
+        human life. I hope my time on Earth is of some benefit to others and the
+        civilization we are building together.
       </p>
-      <p class="mt-2">
-        This site collects that work in one place: essays and newsletter
-        posts under <LinkButton
-          class="marked"
-          href={getRelativeLocaleUrl(locale, "writing")}>Writing</LinkButton
-        >, self-contained utilities under <LinkButton
-          class="marked"
-          href={getRelativeLocaleUrl(locale, "tools")}>Tools</LinkButton
-        >, curated links under <LinkButton
-          class="marked"
-          href={getRelativeLocaleUrl(locale, "resources")}>Resources</LinkButton
-        >, and book notes under <LinkButton
-          class="marked"
-          href={getRelativeLocaleUrl(locale, "books")}>Books</LinkButton
-        >.
+      <p class="mt-4">
+        Some stages of life: I went deep into speech and debate at Gig Harbor
+        High School, studied computer science and philosophy at the University
+        of Washington, spent eight years as a software engineer at Facebook
+        where I helped create and grow Facebook Marketplace, spent over two
+        years in Buddhist silent meditation retreat, saw some of the world,
+        lived in a Zen Monastery, and am currently in a masters of counseling
+        program training to be a psychotherapist. And, of course, working to
+        make this website useful.
       </p>
-      <p class="mt-2">
-        Everything on this page — this bio included — is a stand-in until it
-        gets replaced with the real thing.
+      <p class="mt-4">
+        I currently live in beautiful Portland, Oregon, though I have a deep
+        fondness for exploring the deserts of the American Southwest. I hope you
+        find something of value here and I appreciate your visit to my humble
+        internet home.
       </p>
+
       {
         socials.length > 0 && (
-          <div class="mt-4 flex max-sm:flex-col sm:items-center">
+          <div class="mt-6 flex max-sm:flex-col sm:items-center">
             <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">
               {t.home.socialLinks}:
             </div>
@@ -94,51 +72,35 @@ const homePath = getRelativeLocaleUrl(locale, "");
     </section>
 
     {
-      recentEssays.length > 0 && (
-        <section id="recent-posts" class="pt-12 pb-6">
-          <h2 class="text-2xl font-semibold tracking-wide">
-            {t.home.recentPosts}
-          </h2>
-          <ul>
-            {recentEssays.map(data => (
-              <Card variant="h3" {...data} />
-            ))}
-          </ul>
-          <div class="mt-4">
-            <LinkButton class="marked" href={getRelativeLocaleUrl(locale, "writing")}>
-              {t.home.allPosts}
-              <IconArrowRight class="inline-block rtl:-rotate-180" />
-            </LinkButton>
-          </div>
-        </section>
-      )
-    }
-
-    {
-      recentTools.length > 0 && (
-        <section id="recent-tools" class="border-border border-t pt-12 pb-6">
+      tools.length > 0 && (
+        <section id="tools" class="pt-12 pb-6">
           <h2 class="text-2xl font-semibold tracking-wide">
             {t.home.recentTools}
           </h2>
           <ul>
-            {recentTools.map(tool => (
+            {tools.slice(0, 3).map(tool => (
               <li class="my-6">
                 <a
                   href={tool.href}
-                  class="text-accent inline-block text-lg font-medium decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline focus-visible:underline-offset-0"
+                  class="marked text-foreground inline-block text-xl font-semibold focus-visible:no-underline"
                 >
                   {tool.title}
                 </a>
-                {tool.description && <p>{tool.description}</p>}
+                {tool.description && <p class="mt-1">{tool.description}</p>}
               </li>
             ))}
           </ul>
-          <div class="mt-4">
-            <LinkButton class="marked" href={getRelativeLocaleUrl(locale, "tools")}>
-              {t.home.allTools}
-              <IconArrowRight class="inline-block rtl:-rotate-180" />
-            </LinkButton>
-          </div>
+          {tools.length > 3 && (
+            <div class="mt-4">
+              <LinkButton
+                class="marked"
+                href={getRelativeLocaleUrl(locale, "tools")}
+              >
+                {t.home.allTools}
+                <IconArrowRight class="inline-block rtl:-rotate-180" />
+              </LinkButton>
+            </div>
+          )}
         </section>
       )
     }

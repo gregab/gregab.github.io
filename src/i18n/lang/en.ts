@@ -35,7 +35,7 @@ export default {
     featured: "Featured",
     recentPosts: "Recent Writing",
     allPosts: "All Writing",
-    recentTools: "Recent Tools",
+    recentTools: "Tools",
     allTools: "All Tools",
   },
   footer: {

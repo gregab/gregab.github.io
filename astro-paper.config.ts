@@ -4,7 +4,8 @@ export default defineAstroPaperConfig({
   site: {
     url: "https://www.gregbigelow.com/",
     title: "Greg Bigelow",
-    description: "Writing, tools, and notes from Greg Bigelow — placeholder description, replace me.",
+    description:
+      "Personal site of Greg Bigelow — exploring the world, myself, and what it means to live a full human life.",
     author: "Greg Bigelow",
     timezone: "America/New_York",
   },
@@ -16,16 +17,18 @@ export default defineAstroPaperConfig({
   features: {
     lightAndDarkMode: true,
     dynamicOgImage: true,
-    showArchives: true,
+    showArchives: false,
     showBackButton: true,
     editPost: {
       enabled: false,
     },
-    search: "pagefind",
+    search: false,
   },
   socials: [
     { name: "github", url: "https://github.com/gregab" },
-    { name: "mail", url: "mailto:gregbglw@gmail.com" },
+    // Contact address deliberately omitted for now. When a public-facing
+    // address exists (an alias on this domain rather than a personal inbox),
+    // add: { name: "mail", url: "mailto:..." }
   ],
   shareLinks: [
     { name: "whatsapp", url: "https://wa.me/?text=" },
