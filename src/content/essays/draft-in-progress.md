@@ -1,7 +1,7 @@
 ---
 title: "A draft that shouldn't be visible yet"
 description: "Demonstrates the draft flag — this should be excluded from the published /writing list."
-pubDate: "2026-09-01"
+pubDatetime: 2026-09-01T00:00:00.000Z
 tags: ["placeholder"]
 draft: true
 ---

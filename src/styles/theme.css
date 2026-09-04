@@ -1,0 +1,56 @@
+/* Register design tokens for Tailwind v4 */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+
+  --font-app: var(--font-newsreader);
+  --font-ui: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+/*
+  Light: ink is a warm brown rather than near-black — the colour of printed
+  books rather than screens. It does more of the warmth work than the paper
+  tint does, and readers feel it without being able to name it.
+
+  --accent is a cool slate blue on purpose: it is the only cool value here,
+  and without it the page slides into sepia.
+
+  --mark is the highlighter. It is the site's accent *device* — links and the
+  active nav item get a marker swipe rather than a colour change. Stored as
+  raw channels so it can be composited at --mark-alpha over any background.
+*/
+:root,
+[data-theme="light"] {
+  --background: #faf7f2;
+  --surface: #fffdfa;
+  --foreground: #2b2320;
+  --accent: #35566e;
+  --accent-foreground: #fffdfa;
+  --muted: #ebe3d8;
+  --muted-foreground: #736659;
+  --border: #e4dbd0;
+  --mark: 244 200 106;
+  --mark-alpha: 0.5;
+}
+
+/* Dark keeps the brown axis so warmth survives the toggle instead of
+   reverting to the blue-grey most dark themes default to. */
+[data-theme="dark"] {
+  --background: #1e1a18;
+  --surface: #262120;
+  --foreground: #ede6dc;
+  --accent: #9db8cc;
+  --accent-foreground: #1e1a18;
+  --muted: #352e2a;
+  --muted-foreground: #a89a8d;
+  --border: #3a322c;
+  --mark: 214 165 74;
+  --mark-alpha: 0.4;
+}

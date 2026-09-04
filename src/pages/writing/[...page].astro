@@ -1,0 +1,89 @@
+---
+import type { GetStaticPaths } from "astro";
+import { getCollection } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Card from "@/components/Card.astro";
+import Footer from "@/components/Footer.astro";
+import Pagination from "@/components/Pagination.astro";
+import LinkButton from "@/components/LinkButton.astro";
+import { getSortedPosts } from "@/utils/getSortedPosts";
+import { useTranslations } from "@/i18n";
+import { SUBSTACK_URL, SUBSTACK_POSTS } from "@/data/substack";
+import config from "@/config";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = await getCollection("essays", ({ data }) => !data.draft);
+  return paginate(getSortedPosts(posts), { pageSize: config.posts.perPage });
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+
+const locale = Astro.currentLocale ?? config.site.lang;
+const t = useTranslations(locale);
+
+const dateFormatter = new Intl.DateTimeFormat(locale, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+---
+
+<Layout title={`${t.pages.writingTitle} | ${config.site.title}`}>
+  <Header />
+
+  <Breadcrumb />
+
+  <Main pageTitle={t.pages.writingTitle} pageDesc={t.pages.writingDesc}>
+    <ul>
+      {page.data.map(data => <Card {...data} />)}
+    </ul>
+  </Main>
+
+  <Pagination {page} />
+
+  {
+    page.currentPage === 1 && (
+      <section class="app-layout mt-4 mb-12">
+        <div class="border-border rounded border p-4 sm:p-6">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-xl font-semibold">Newsletter</h2>
+            <LinkButton
+              href={SUBSTACK_URL}
+              target="_blank"
+              rel="noreferrer"
+              class="border-border hover:border-accent rounded border px-3 py-1.5 text-sm"
+            >
+              Subscribe on Substack
+            </LinkButton>
+          </div>
+          <p class="text-muted-foreground mb-4 text-sm italic">
+            Recent posts from the Substack newsletter — not hosted on this
+            site.
+          </p>
+          <ul class="flex flex-col gap-2">
+            {SUBSTACK_POSTS.map(post => (
+              <li>
+                <a
+                  href={post.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  class="border-border flex flex-wrap items-center justify-between gap-3 rounded border px-3 py-2 hover:opacity-80"
+                >
+                  <span class="font-medium">{post.title}</span>
+                  <time class="text-muted-foreground text-sm whitespace-nowrap">
+                    {dateFormatter.format(new Date(post.date))}
+                  </time>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+
+  <Footer noMarginTop={page.lastPage > 1} />
+</Layout>

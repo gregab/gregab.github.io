@@ -1,23 +1,30 @@
 ---
-const { title, img, desc, url, badge, tags, target = "_blank" } = Astro.props;
-import { Image } from "astro:assets";
+import type { CollectionEntry } from "astro:content";
+import { getPostUrl } from "@/utils/getPostPaths";
+import { toTransitionName } from "@/utils/toTransitionName";
+import Datetime from "./Datetime.astro";
+
+type Props = {
+  variant?: "h2" | "h3";
+} & CollectionEntry<"essays">;
+
+const { variant: Heading = "h2", id, data, filePath } = Astro.props;
+
+const { title, description, ...props } = data;
 ---
 
-<div class="md:w-1/3 w-full">
-  <a href={url} target={target}>
-    <div class="card bg-base-100 transition ease-in-out hover:shadow-xl mx-6 my-2 hover:scale-[102%]">
-      <Image width={750} height={422} format="webp" src={img} alt={title} />
-      <div class="card-body">
-        <h2 class="card-title">
-          {title}
-          {badge && <div class="badge badge-secondary">{badge}</div>}
-        </h2>
-        <p>{desc}</p>
-        <div class="card-actions justify-end">
-          {tags && tags.map((tag) => <div class="badge badge-outline">{tag}</div>)}
-        </div>
-      </div>
-    </div>
+<li class="my-6">
+  <a
+    href={getPostUrl(id, filePath, Astro.currentLocale)}
+    class:list={[
+      "marked text-foreground inline-block text-xl font-semibold",
+      "focus-visible:no-underline",
+    ]}
+  >
+    <Heading transition:name={toTransitionName(id)}>
+      {title}
+    </Heading>
   </a>
-</div>
-
+  <Datetime {...props} />
+  <p>{description}</p>
+</li>

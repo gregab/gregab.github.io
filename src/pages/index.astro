@@ -1,95 +1,158 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import HorizontalCard from "../components/HorizontalCard.astro";
 import { getCollection } from "astro:content";
-import createSlug from "../lib/createSlug";
-import { getTools } from "../lib/tools";
+import { getRelativeLocaleUrl } from "astro:i18n";
+import IconRss from "@/assets/icons/IconRss.svg";
+import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Socials from "@/components/Socials.astro";
+import Card from "@/components/Card.astro";
+import LinkButton from "@/components/LinkButton.astro";
+import { getSortedPosts } from "@/utils/getSortedPosts";
+import { getTools } from "@/lib/tools";
+import { useTranslations } from "@/i18n";
+import config from "@/config";
 
-const essays = (await getCollection("essays", ({ data }) => !data.draft)).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
-const recentEssays = essays.slice(0, 3);
+const { socials, posts: postsConfig } = config;
 
-const tools = getTools();
-const recentTools = tools.slice(0, 3);
+const locale = Astro.currentLocale ?? config.site.lang;
+const t = useTranslations(locale);
+
+const essays = await getCollection("essays");
+const sortedEssays = getSortedPosts(essays);
+const recentEssays = sortedEssays.slice(0, postsConfig.perIndex);
+
+const recentTools = getTools().slice(0, 3);
+
+const homePath = getRelativeLocaleUrl(locale, "");
 ---
 
-<BaseLayout sideBarActiveItemID="home">
-  <div class="pb-12 mt-5">
-    <div class="text-xl py-1">Hey there 👋</div>
-    <div class="text-5xl font-bold">I'm Greg Bigelow</div>
-    <div class="py-4">
-      <p class="text-lg mb-4">
+<Layout>
+  <Header />
+  <main
+    id="main-content"
+    data-layout="index"
+    data-home-path={homePath}
+    class="app-layout my-1"
+  >
+    <section id="hero" class="border-border border-b pt-8 pb-6">
+      <h1 class="my-4 inline-block text-4xl font-bold sm:my-8 sm:text-5xl">
+        Hey, I'm Greg Bigelow
+      </h1>
+      <a
+        target="_blank"
+        href={`${import.meta.env.BASE_URL.replace(/\/?$/, "/")}rss.xml`}
+        class="inline-block"
+        aria-label="RSS Feed"
+        title="RSS Feed"
+      >
+        <IconRss
+          width={20}
+          height={20}
+          class="stroke-accent scale-125 stroke-3 rtl:-rotate-90"
+        />
+        <span class="sr-only">RSS Feed</span>
+      </a>
+
+      <p>
         <!-- PLACEHOLDER BIO — replace with a real one. -->
-        This is a placeholder bio. Greg writes about [topics to fill in], builds small
-        single-page tools when a problem is annoying enough to be worth automating, and
-        occasionally reads a book worth reviewing.
+        This is a placeholder bio. Greg writes about [topics to fill in],
+        builds small single-page tools when a problem is annoying enough to
+        be worth automating, and occasionally reads a book worth reviewing.
       </p>
-      <p class="text-lg mb-4">
-        This site collects that work in one place: essays and newsletter posts under
-        <a class="link" href="/writing">Writing</a>, self-contained utilities under
-        <a class="link" href="/tools">Tools</a>, curated links under
-        <a class="link" href="/resources">Resources</a>, and book notes under
-        <a class="link" href="/books">Books</a>.
+      <p class="mt-2">
+        This site collects that work in one place: essays and newsletter
+        posts under <LinkButton
+          class="marked"
+          href={getRelativeLocaleUrl(locale, "writing")}>Writing</LinkButton
+        >, self-contained utilities under <LinkButton
+          class="marked"
+          href={getRelativeLocaleUrl(locale, "tools")}>Tools</LinkButton
+        >, curated links under <LinkButton
+          class="marked"
+          href={getRelativeLocaleUrl(locale, "resources")}>Resources</LinkButton
+        >, and book notes under <LinkButton
+          class="marked"
+          href={getRelativeLocaleUrl(locale, "books")}>Books</LinkButton
+        >.
       </p>
-      <p class="text-lg">
-        Everything on this page — this bio included — is a stand-in until it gets replaced
-        with the real thing.
+      <p class="mt-2">
+        Everything on this page — this bio included — is a stand-in until it
+        gets replaced with the real thing.
       </p>
-    </div>
-  </div>
+      {
+        socials.length > 0 && (
+          <div class="mt-4 flex max-sm:flex-col sm:items-center">
+            <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">
+              {t.home.socialLinks}:
+            </div>
+            <Socials />
+          </div>
+        )
+      }
+    </section>
 
-  <div>
-    <div class="text-3xl w-full font-bold mb-5">Latest writing</div>
-  </div>
+    {
+      recentEssays.length > 0 && (
+        <section id="recent-posts" class="pt-12 pb-6">
+          <h2 class="text-2xl font-semibold tracking-wide">
+            {t.home.recentPosts}
+          </h2>
+          <ul>
+            {recentEssays.map(data => (
+              <Card variant="h3" {...data} />
+            ))}
+          </ul>
+          <div class="mt-4">
+            <LinkButton class="marked" href={getRelativeLocaleUrl(locale, "writing")}>
+              {t.home.allPosts}
+              <IconArrowRight class="inline-block rtl:-rotate-180" />
+            </LinkButton>
+          </div>
+        </section>
+      )
+    }
 
-  {
-    recentEssays.length === 0 ? (
-      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
-        <p>Nothing published yet — check back soon.</p>
-      </div>
-    ) : (
-      recentEssays.map((post) => (
-        <>
-          <HorizontalCard
-            title={post.data.title}
-            img={post.data.heroImage}
-            desc={post.data.description}
-            url={"/writing/" + createSlug(post.data.title, post.id)}
-            target="_self"
-          />
-          <div class="divider my-0" />
-        </>
-      ))
-    )
-  }
-  <div class="text-right mt-2">
-    <a class="link" href="/writing">See all writing &rarr;</a>
-  </div>
+    {
+      recentTools.length > 0 && (
+        <section id="recent-tools" class="border-border border-t pt-12 pb-6">
+          <h2 class="text-2xl font-semibold tracking-wide">
+            {t.home.recentTools}
+          </h2>
+          <ul>
+            {recentTools.map(tool => (
+              <li class="my-6">
+                <a
+                  href={tool.href}
+                  class="text-accent inline-block text-lg font-medium decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline focus-visible:underline-offset-0"
+                >
+                  {tool.title}
+                </a>
+                {tool.description && <p>{tool.description}</p>}
+              </li>
+            ))}
+          </ul>
+          <div class="mt-4">
+            <LinkButton class="marked" href={getRelativeLocaleUrl(locale, "tools")}>
+              {t.home.allTools}
+              <IconArrowRight class="inline-block rtl:-rotate-180" />
+            </LinkButton>
+          </div>
+        </section>
+      )
+    }
+  </main>
+  <Footer />
+</Layout>
 
-  <div>
-    <div class="text-3xl w-full font-bold mb-5 mt-10">Latest tools</div>
-  </div>
-
-  {
-    recentTools.length === 0 ? (
-      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
-        <p>No tools published yet.</p>
-      </div>
-    ) : (
-      <ul class="flex flex-col gap-2">
-        {recentTools.map((tool) => (
-          <li class="card bg-base-200">
-            <a href={tool.href} class="card-body py-3 px-4">
-              <span class="font-semibold">{tool.title}</span>
-              {tool.description && <span class="opacity-75 text-sm">{tool.description}</span>}
-            </a>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-  <div class="text-right mt-2">
-    <a class="link" href="/tools">See all tools &rarr;</a>
-  </div>
-</BaseLayout>
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const indexLayout = (document.querySelector("#main-content") as HTMLElement)
+      ?.dataset;
+    const baseRoot = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+    if (indexLayout?.layout) {
+      sessionStorage.setItem("backUrl", indexLayout.homePath ?? baseRoot);
+    }
+  });
+</script>

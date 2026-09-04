@@ -1,66 +1,83 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCollection, render } from "astro:content";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Footer from "@/components/Footer.astro";
+import config from "@/config";
 
-dayjs.extend(localizedFormat);
+const locale = Astro.currentLocale ?? config.site.lang;
 
 const books = (await getCollection("books")).sort(
   (a, b) => b.data.dateRead.valueOf() - a.data.dateRead.valueOf()
 );
 
+const dateFormatter = new Intl.DateTimeFormat(locale, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
 const rendered = await Promise.all(
-  books.map(async (book) => {
+  books.map(async book => {
     const { Content } = await render(book);
     return { book, Content };
   })
 );
 ---
 
-<BaseLayout title="Books" sideBarActiveItemID="books">
-  <div class="mb-5">
-    <div class="text-3xl w-full font-bold">Books</div>
-  </div>
+<Layout title={`Books | ${config.site.title}`}>
+  <Header />
 
-  {
-    rendered.length === 0 ? (
-      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
-        <p class="font-bold">Sorry!</p>
-        <p>No book notes yet. Check back later!</p>
-      </div>
-    ) : (
-      <ul class="flex flex-col gap-6">
-        {rendered.map(({ book, Content }) => (
-          <li class="card bg-base-200">
-            <div class="card-body flex-col md:flex-row gap-4">
-              {book.data.coverImage && (
-                <img
-                  src={book.data.coverImage}
-                  alt={`Cover of ${book.data.title}`}
-                  width="120"
-                  height="180"
-                  class="rounded shadow-sm max-w-[120px] self-start"
-                />
-              )}
-              <div class="grow">
-                <h2 class="card-title">{book.data.title}</h2>
-                <p class="opacity-75 mb-1">{book.data.author}</p>
-                <div class="flex items-center gap-3 mb-3">
-                  <span class="badge badge-secondary" aria-label={`Rating: ${book.data.rating} out of 5`}>
-                    {"★".repeat(book.data.rating)}
-                    {"☆".repeat(5 - book.data.rating)}
-                  </span>
-                  <time class="opacity-60 text-sm">Read {dayjs(book.data.dateRead).format("ll")}</time>
-                </div>
-                <div class="prose max-w-none">
-                  <Content />
+  <Breadcrumb />
+
+  <Main pageTitle="Books" pageDesc="Notes on books I've read.">
+    {
+      rendered.length === 0 ? (
+        <p class="text-muted-foreground">
+          No book notes yet. Check back later!
+        </p>
+      ) : (
+        <ul class="flex flex-col gap-8">
+          {rendered.map(({ book, Content }) => (
+            <li class="border-border border-b pb-8 last:border-b-0">
+              <div class="flex flex-col gap-4 sm:flex-row">
+                {book.data.coverImage && (
+                  <img
+                    src={book.data.coverImage}
+                    alt={`Cover of ${book.data.title}`}
+                    width="120"
+                    height="180"
+                    class="max-w-30 self-start rounded shadow-sm"
+                  />
+                )}
+                <div class="grow">
+                  <h2 class="text-xl font-semibold">{book.data.title}</h2>
+                  <p class="text-muted-foreground mb-1">{book.data.author}</p>
+                  <div class="mb-3 flex items-center gap-3">
+                    <span
+                      class="text-accent"
+                      aria-label={`Rating: ${book.data.rating} out of 5`}
+                    >
+                      {"★".repeat(book.data.rating)}
+                      {"☆".repeat(5 - book.data.rating)}
+                    </span>
+                    <time class="text-muted-foreground text-sm">
+                      Read {dateFormatter.format(book.data.dateRead)}
+                    </time>
+                  </div>
+                  <div class="app-prose max-w-none">
+                    <Content />
+                  </div>
                 </div>
               </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-</BaseLayout>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </Main>
+
+  <Footer />
+</Layout>

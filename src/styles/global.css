@@ -1,3 +1,71 @@
-.time-line-container>div:last-child .education__time>.education__line {
-    display: none;
+@import "tailwindcss";
+@import "./theme.css";
+@import "./typography.css";
+@import "rehype-callouts/theme/obsidian";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@layer base {
+  html {
+    font-optical-sizing: auto;
+  }
+  * {
+    @apply border-border outline-accent/75;
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-muted) transparent;
+  }
+  a,
+  button,
+  #main-content {
+    @apply outline-accent outline-offset-1 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility max-w-app {
+  @apply max-w-3xl;
+}
+
+@utility app-layout {
+  @apply max-w-app mx-auto w-full px-4;
+}
+
+/*
+  The signature device. Instead of colouring links and filling buttons, the
+  accent is a highlighter swipe: a thin marker line at rest that grows to
+  cover the text on hover. box-decoration-break keeps it intact when an
+  inline link wraps across lines.
+*/
+@utility marked {
+  background-image: linear-gradient(rgb(var(--mark) / var(--mark-alpha)) 0 100%);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.16em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-size 180ms ease;
+  }
+
+  &:hover {
+    background-size: 100% 0.95em;
+  }
+}
+
+/* The current page is marked as if someone had run a highlighter over it. */
+@utility active-nav {
+  background-image: linear-gradient(rgb(var(--mark) / var(--mark-alpha)) 0 100%);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.95em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+:target {
+  scroll-margin-block: 1rem;
 }

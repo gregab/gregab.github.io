@@ -1,36 +1,46 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getTools } from "../../lib/tools";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Footer from "@/components/Footer.astro";
+import { getTools } from "@/lib/tools";
+import config from "@/config";
 
 const tools = getTools();
 ---
 
-<BaseLayout title="Tools" sideBarActiveItemID="tools">
-  <div class="mb-5">
-    <div class="text-3xl w-full font-bold">Tools</div>
-    <p class="opacity-75 mt-2">
-      Small, self-contained HTML tools. Each one is a single file — drop it in
-      <code>public/tools/</code> and it shows up here automatically.
-    </p>
-  </div>
+<Layout title={`Tools | ${config.site.title}`}>
+  <Header />
 
-  {
-    tools.length === 0 ? (
-      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
-        <p class="font-bold">Sorry!</p>
-        <p>There are no tools to show at the moment. Check back later!</p>
-      </div>
-    ) : (
-      <ul class="flex flex-col gap-3">
-        {tools.map((tool) => (
-          <li class="card bg-base-200 hover:shadow-xl transition ease-in-out hover:scale-[101%]">
-            <a href={tool.href} class="card-body">
-              <h2 class="card-title">{tool.title}</h2>
-              {tool.description && <p class="opacity-75">{tool.description}</p>}
-            </a>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-</BaseLayout>
+  <Breadcrumb />
+
+  <Main
+    pageTitle="Tools"
+    pageDesc="Small, self-contained HTML tools. Each one is a single file — drop it in public/tools/ and it shows up here automatically."
+  >
+    {
+      tools.length === 0 ? (
+        <p class="text-muted-foreground">
+          There are no tools to show at the moment. Check back later!
+        </p>
+      ) : (
+        <ul>
+          {tools.map(tool => (
+            <li class="my-6">
+              <a
+                href={tool.href}
+                class="text-accent inline-block text-lg font-medium decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline focus-visible:underline-offset-0"
+              >
+                {tool.title}
+              </a>
+              {tool.description && <p>{tool.description}</p>}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </Main>
+
+  <Footer />
+</Layout>
