@@ -1,0 +1,106 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Breadcrumb from "@/components/Breadcrumb.astro";
+import Main from "@/components/Main.astro";
+import Footer from "@/components/Footer.astro";
+import ResourceLink from "@/components/ResourceLink.astro";
+import config from "@/config";
+
+type Resource = Awaited<ReturnType<typeof getCollection<"resources">>>[number];
+
+/*
+  Three levels of nesting: category > section > group. Rather than carry a
+  sort key at each level, everything inherits the lowest `order` of the
+  entries beneath it, so Greg's ordering in the staging folder survives with
+  one number per link.
+*/
+function groupBy(items: Resource[], key: (r: Resource) => string) {
+  const groups = new Map<string, Resource[]>();
+  for (const item of items) {
+    const k = key(item);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(item);
+  }
+  return [...groups.entries()]
+    .map(([name, entries]) => ({
+      name,
+      entries: entries.sort((a, b) => a.data.order - b.data.order),
+      order: Math.min(...entries.map(e => e.data.order)),
+    }))
+    .sort((a, b) => a.order - b.order);
+}
+
+/** The format a section is mostly made of, so entries that match it can skip
+ *  a label that would only repeat the heading above them. */
+function dominantFormat(entries: Resource[]) {
+  const counts = new Map<string, number>();
+  for (const e of entries) {
+    counts.set(e.data.format, (counts.get(e.data.format) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+const resources = await getCollection("resources");
+
+const categories = groupBy(resources, r => r.data.category).map(category => ({
+  ...category,
+  sections: groupBy(category.entries, r => r.data.section).map(section => ({
+    ...section,
+    implied: dominantFormat(section.entries),
+    // An entry with no group stands on its own rather than under a heading.
+    groups: groupBy(section.entries, r => r.data.group ?? ""),
+  })),
+}));
+---
+
+<Layout title={`Resources | ${config.site.title}`}>
+  <Header />
+
+  <Breadcrumb />
+
+  <Main pageTitle="Resources">
+    {
+      resources.length === 0 ? (
+        <p class="text-muted-foreground">
+          No resources listed yet. Check back later!
+        </p>
+      ) : (
+        categories.map(category => (
+          <section class="mb-14">
+            <h2 class="border-border mb-8 border-b pb-2 text-2xl font-semibold sm:text-3xl">
+              {category.name}
+            </h2>
+
+            {category.sections.map(section => (
+              <div class="mb-10">
+                <h3 class="font-ui text-muted-foreground mb-6 text-xs font-semibold tracking-[0.18em] uppercase">
+                  {section.name}
+                </h3>
+
+                {section.groups.map(group => (
+                  <div class="mb-8 last:mb-0">
+                    {group.name && (
+                      <h4 class="mb-4 text-lg font-semibold">{group.name}</h4>
+                    )}
+                    <ul class="border-border border-s ps-5">
+                      {group.entries.map(entry => (
+                        <ResourceLink
+                          resource={entry.data}
+                          implied={section.implied}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+        ))
+      )
+    }
+  </Main>
+
+  <Footer />
+</Layout>

@@ -34,13 +34,35 @@ const pages = defineCollection({
   }),
 });
 
+/*
+  Resources are outbound links, and the page has to preview them well enough
+  that someone can decide whether to click. Everything except `note` is
+  factual metadata about the destination — show, episode, author, date — so a
+  reader gets the preview without anyone having to write ad copy for it.
+
+  `note` is Greg's own words and is optional. Most links don't have one, and
+  an empty note is better than an invented one.
+
+  Grouping is three deep: category (topic) > section (Podcasts, Articles) >
+  group (usually a person). `order` is the only sort knob — sections and
+  groups inherit the lowest order of the entries inside them.
+*/
 const resources = defineCollection({
   loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/resources" }),
   schema: z.object({
     title: z.string(),
     url: z.url(),
     category: z.string(),
-    note: z.string(),
+    section: z.string(),
+    group: z.string().optional(),
+    format: z.enum(["podcast", "article", "newsletter", "group"]),
+    source: z.string().optional(),
+    byline: z.string().optional(),
+    episode: z.string().optional(),
+    published: z.coerce.date().optional(),
+    duration: z.string().optional(),
+    note: z.string().optional(),
+    order: z.number().default(0),
     added: z.coerce.date().optional(),
   }),
 });

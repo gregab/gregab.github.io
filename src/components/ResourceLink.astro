@@ -1,0 +1,88 @@
+---
+/*
+  One outbound link, presented so a reader can decide whether to click without
+  clicking. Everything on the meta line is factual metadata about the
+  destination — format, show or publication, author, episode, date, length,
+  domain. The only prose here is `note`, which is Greg's, and most entries
+  don't have one.
+*/
+import IconExternalLink from "@/assets/icons/IconExternalLink.svg";
+
+type Props = {
+  // The format the surrounding section already implies. A chip that just
+  // repeats the heading above it is noise, so the label only shows when an
+  // entry breaks the pattern — the newsletter and the group, which are
+  // exactly the two a reader needs warning about.
+  implied?: string;
+  resource: {
+    title: string;
+    url: string;
+    format: "podcast" | "article" | "newsletter" | "group";
+    source?: string;
+    byline?: string;
+    episode?: string;
+    published?: Date;
+    duration?: string;
+    note?: string;
+  };
+};
+
+const { resource, implied } = Astro.props;
+
+const FORMAT_LABEL: Record<Props["resource"]["format"], string> = {
+  podcast: "Podcast",
+  article: "Article",
+  newsletter: "Newsletter",
+  group: "Group",
+};
+
+// Dates on the source pages are days; showing the month is honest about that
+// precision and keeps the meta line short.
+const published = resource.published
+  ? new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(resource.published)
+  : undefined;
+
+const domain = new URL(resource.url).hostname.replace(/^www\./, "");
+
+const meta = [
+  resource.source,
+  resource.byline,
+  resource.episode,
+  published,
+  resource.duration,
+].filter(Boolean);
+---
+
+<li class="my-6 first:mt-0 last:mb-0">
+  {
+    resource.format !== implied && (
+      <p class="font-mono text-muted-foreground mb-1 text-[0.7rem] tracking-[0.14em] uppercase">
+        {FORMAT_LABEL[resource.format]}
+      </p>
+    )
+  }
+
+  <a
+    href={resource.url}
+    target="_blank"
+    rel="noreferrer"
+    class="marked text-foreground text-lg font-semibold focus-visible:no-underline"
+  >
+    {resource.title}
+  </a>
+
+  <p class="font-ui text-muted-foreground mt-1 text-sm">
+    {meta.join(" · ")}
+    <span class="whitespace-nowrap">
+      {meta.length > 0 && <span aria-hidden="true"> · </span>}
+      {domain}
+      <IconExternalLink class="inline-block size-3.5 align-[-0.15em]" />
+    </span>
+  </p>
+
+  {resource.note && <p class="mt-2">{resource.note}</p>}
+</li>
