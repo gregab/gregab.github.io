@@ -71,9 +71,9 @@ content. To bring a section back, drop the underscore and re-add its nav item in
 while the feed is parked — restore it when `_rss.xml.ts` comes back, since
 advertising a feed that 404s is worse than advertising none.
 
-**No contact address is published.** Greg does not want his personal Gmail on a
-public page. `socials` in `astro-paper.config.ts` has a commented placeholder for
-a future alias on this domain. Don't add a personal address back.
+**The published contact address is `hello@gregbigelow.com`**, a Cloudflare Email
+Routing alias that forwards to Greg's inbox. Never replace it with a personal
+address — keeping the personal one off a public page is the whole point.
 
 ## Working on the site
 

@@ -26,9 +26,9 @@ export default defineAstroPaperConfig({
   },
   socials: [
     { name: "github", url: "https://github.com/gregab" },
-    // Contact address deliberately omitted for now. When a public-facing
-    // address exists (an alias on this domain rather than a personal inbox),
-    // add: { name: "mail", url: "mailto:..." }
+    // Cloudflare Email Routing alias on this domain, forwarding to Greg's
+    // inbox. Never put a personal address here.
+    { name: "mail", url: "mailto:hello@gregbigelow.com" },
   ],
   shareLinks: [
     { name: "whatsapp", url: "https://wa.me/?text=" },
