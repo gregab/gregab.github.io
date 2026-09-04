@@ -39,6 +39,11 @@ portable markdown.
   A file sitting in the staging folder is not consent to publish it; he may be
   mid-draft. If scope is ambiguous, ask.
 - **One-way.** Never write back into the vault.
+- **Proofread before publishing.** Greg drafts fast and expects the publish step
+  to catch what he missed. Fix outright errors (typos, missing words, broken
+  grammar, wrong proper nouns) as part of the same change and say what you
+  changed. Flag judgment calls about voice or fact rather than silently
+  "improving" them — his sentence fragments and rhythm are style, not mistakes.
 
 ## What is public right now
 
