@@ -5,7 +5,6 @@ category: "Psychotherapy"
 section: "Podcasts"
 group: "Jon Frederickson"
 format: "group"
-role: "profile"
 source: "Facebook"
 note: "Jon has some wonderful writing responding to people's questions buried in this Facebook group, of all places."
 order: 6

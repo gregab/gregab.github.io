@@ -57,13 +57,7 @@ export async function getResourceTree() {
     sections: groupBy(category.entries, r => r.data.section).map(section => ({
       ...section,
       implied: dominantFormat(section.entries),
-      groups: groupBy(section.entries, r => r.data.group ?? "").map(group => ({
-        ...group,
-        // Profile links say where to find someone rather than pointing at one
-        // thing they made, so they belong in the heading, not the list.
-        profiles: group.entries.filter(e => e.data.role === "profile"),
-        items: group.entries.filter(e => e.data.role !== "profile"),
-      })),
+      groups: groupBy(section.entries, r => r.data.group ?? ""),
     })),
   }));
 }

@@ -5,7 +5,6 @@ import Breadcrumb from "@/components/Breadcrumb.astro";
 import Main from "@/components/Main.astro";
 import Footer from "@/components/Footer.astro";
 import ResourceLink from "@/components/ResourceLink.astro";
-import ResourceMeta from "@/components/ResourceMeta.astro";
 import { getResourceTree } from "@/lib/resources";
 import config from "@/config";
 
@@ -56,49 +55,21 @@ const isEmpty = categories.length === 0;
                       <h4 class="text-xl font-semibold">{group.name}</h4>
                     )}
 
-                    {group.profiles.map(profile => (
-                      <div class="mt-1.5">
-                        <a
-                          href={profile.data.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          class="marked text-foreground font-medium focus-visible:no-underline"
-                        >
-                          {/* The Substack is titled "Jonathan Shedler" too,
-                              so fall back to the source rather than echo the
-                              heading directly above it. */}
-                          {profile.data.title === group.name
-                            ? (profile.data.source ?? profile.data.title)
-                            : profile.data.title}
-                        </a>
-                        <ResourceMeta
-                          resource={profile.data}
-                          skipSource={profile.data.title === group.name}
-                          class="inline"
-                          separator
-                        />
-                        {profile.data.note && (
-                          <p class="mt-2">{profile.data.note}</p>
-                        )}
-                      </div>
-                    ))}
-
                     {/* The rule means "these belong to the name above", so an
                         ungrouped list sits flush instead. */}
-                    {group.items.length > 0 && (
-                      <ul
-                        class:list={[
-                          group.name && "border-border mt-5 border-s ps-5",
-                        ]}
-                      >
-                        {group.items.map(entry => (
-                          <ResourceLink
-                            resource={entry.data}
-                            implied={section.implied}
-                          />
-                        ))}
-                      </ul>
-                    )}
+                    <ul
+                      class:list={[
+                        group.name && "border-border mt-5 border-s ps-5",
+                      ]}
+                    >
+                      {group.entries.map(entry => (
+                        <ResourceLink
+                          resource={entry.data}
+                          implied={section.implied}
+                          groupName={group.name}
+                        />
+                      ))}
+                    </ul>
                   </div>
                 ))}
               </div>

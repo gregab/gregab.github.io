@@ -12,9 +12,17 @@ type Props = {
   resource: Resource;
   /** The format the surrounding section already implies. */
   implied?: string;
+  /** The heading this sits under, so the link text can avoid echoing it. */
+  groupName?: string;
 };
 
-const { resource, implied } = Astro.props;
+const { resource, implied, groupName } = Astro.props;
+
+// Shedler's Substack is titled "Jonathan Shedler", which under a heading that
+// already says Jonathan Shedler reads as a stutter. Its source names it just
+// as well, and then the meta line below needn't repeat that either.
+const echoesHeading = Boolean(groupName) && resource.title === groupName;
+const label = echoesHeading ? (resource.source ?? resource.title) : resource.title;
 
 const FORMAT_LABEL: Record<Resource["format"], string> = {
   podcast: "Podcast",
@@ -39,10 +47,10 @@ const FORMAT_LABEL: Record<Resource["format"], string> = {
     rel="noreferrer"
     class="marked text-foreground text-lg font-semibold focus-visible:no-underline"
   >
-    {resource.title}
+    {label}
   </a>
 
-  <ResourceMeta resource={resource} class="mt-1.5" />
+  <ResourceMeta resource={resource} skipSource={echoesHeading} class="mt-1.5" />
 
   {resource.note && <p class="mt-2">{resource.note}</p>}
 </li>
