@@ -31,9 +31,9 @@ portable markdown.
 
 **Rules:**
 
-- **Only ever read the `Website/` subfolder.** The rest of the vault is private —
-  counseling coursework, personal notes, daily notes, medical research. None of it
-  belongs on a public site, and this repo is public.
+- **Only ever read the `Website/` subfolder.** Everything else in the vault is
+  private and off-limits. Don't read it, don't summarize it, don't reference it.
+  This repo is public.
 - **Publish only what Greg names.** There is no automatic sync and no publish flag.
   A file sitting in the staging folder is not consent to publish it; he may be
   mid-draft. If scope is ambiguous, ask.
