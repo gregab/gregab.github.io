@@ -1,0 +1,36 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getTools } from "../../lib/tools";
+
+const tools = getTools();
+---
+
+<BaseLayout title="Tools" sideBarActiveItemID="tools">
+  <div class="mb-5">
+    <div class="text-3xl w-full font-bold">Tools</div>
+    <p class="opacity-75 mt-2">
+      Small, self-contained HTML tools. Each one is a single file — drop it in
+      <code>public/tools/</code> and it shows up here automatically.
+    </p>
+  </div>
+
+  {
+    tools.length === 0 ? (
+      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
+        <p class="font-bold">Sorry!</p>
+        <p>There are no tools to show at the moment. Check back later!</p>
+      </div>
+    ) : (
+      <ul class="flex flex-col gap-3">
+        {tools.map((tool) => (
+          <li class="card bg-base-200 hover:shadow-xl transition ease-in-out hover:scale-[101%]">
+            <a href={tool.href} class="card-body">
+              <h2 class="card-title">{tool.title}</h2>
+              {tool.description && <p class="opacity-75">{tool.description}</p>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</BaseLayout>

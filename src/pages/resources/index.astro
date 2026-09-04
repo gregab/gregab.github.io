@@ -1,0 +1,55 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+
+const resources = await getCollection("resources");
+
+const groups = new Map<string, typeof resources>();
+for (const resource of resources) {
+  const category = resource.data.category;
+  if (!groups.has(category)) groups.set(category, []);
+  groups.get(category)!.push(resource);
+}
+
+const sortedCategories = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+---
+
+<BaseLayout title="Resources" sideBarActiveItemID="resources">
+  <div class="mb-5">
+    <div class="text-3xl w-full font-bold">Resources</div>
+    <p class="opacity-75 mt-2">Curated outbound links, grouped by category.</p>
+  </div>
+
+  {
+    resources.length === 0 ? (
+      <div class="bg-base-200 border-l-4 border-secondary w-full p-4 min-w-full">
+        <p class="font-bold">Sorry!</p>
+        <p>No resources listed yet. Check back later!</p>
+      </div>
+    ) : (
+      sortedCategories.map((category) => (
+        <section class="mb-8">
+          <h2 class="text-2xl font-bold mb-3">{category}</h2>
+          <ul class="flex flex-col gap-2">
+            {groups
+              .get(category)!
+              .sort((a, b) => a.data.title.localeCompare(b.data.title))
+              .map((resource) => (
+                <li class="card bg-base-200">
+                  <a
+                    href={resource.data.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    class="card-body py-3 px-4"
+                  >
+                    <span class="font-semibold">{resource.data.title}</span>
+                    <span class="opacity-75 text-sm">{resource.data.note}</span>
+                  </a>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ))
+    )
+  }
+</BaseLayout>
