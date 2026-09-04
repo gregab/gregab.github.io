@@ -30,12 +30,17 @@ const isEmpty = categories.length === 0;
       ) : (
         categories.map(category => (
           <section class="mb-16 last:mb-4">
-            <h2
-              id={category.id}
-              class="border-border mb-9 border-b pb-2 text-2xl font-semibold sm:text-3xl"
-            >
-              {category.name}
-            </h2>
+            {/* With only one category, its name would just repeat the page
+                title, so the heading only earns its place once there are
+                multiple to tell apart. */}
+            {categories.length > 1 && (
+              <h2
+                id={category.id}
+                class="border-border mb-9 border-b pb-2 text-2xl font-semibold sm:text-3xl"
+              >
+                {category.name}
+              </h2>
+            )}
 
             {category.sections.map(section => (
               <div class="mb-11 last:mb-0">
