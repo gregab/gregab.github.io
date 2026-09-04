@@ -5,6 +5,7 @@ category: "Psychotherapy"
 section: "Podcasts"
 group: "Jonathan Shedler"
 format: "newsletter"
+role: "profile"
 source: "Substack"
 note: "Wonderful Substack here."
 order: 1

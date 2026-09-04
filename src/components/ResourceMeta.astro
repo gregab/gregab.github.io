@@ -1,0 +1,52 @@
+---
+/*
+  The line under a resource link. Everything on it is factual detail about the
+  destination — show or publication, author, episode, date, length, domain —
+  so a reader can size up a link without anyone having to write copy for it.
+*/
+import IconExternalLink from "@/assets/icons/IconExternalLink.svg";
+import type { Resource } from "@/lib/resources";
+
+type Props = {
+  resource: Resource;
+  /** Omit the source when the link text above is already the source. */
+  skipSource?: boolean;
+  /** Lead with a separator, for when this sits inline after the link. */
+  separator?: boolean;
+  class?: string;
+};
+
+const { resource, skipSource, separator, class: className } = Astro.props;
+
+// The source pages date these to the day, but the day is never what a reader
+// is weighing up. Month and year is the honest, shorter unit.
+const published = resource.published
+  ? new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(resource.published)
+  : undefined;
+
+const domain = new URL(resource.url).hostname.replace(/^www\./, "");
+
+const parts = [
+  skipSource ? undefined : resource.source,
+  resource.byline,
+  resource.episode,
+  published,
+  resource.duration,
+].filter(Boolean);
+---
+
+<p class:list={["font-ui text-muted-foreground text-sm", className]}>
+  {/* A non-breaking space: the compiler collapses the whitespace that would
+      otherwise sit between the link and this inline run. */}
+  {separator && <span aria-hidden="true">&#160;· </span>}
+  {parts.join(" · ")}
+  <span class="whitespace-nowrap">
+    {parts.length > 0 && <span aria-hidden="true"> · </span>}
+    {domain}
+    <IconExternalLink class="inline-block size-3.5 align-[-0.15em]" />
+  </span>
+</p>

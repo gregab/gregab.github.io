@@ -46,6 +46,12 @@ const pages = defineCollection({
   Grouping is three deep: category (topic) > section (Podcasts, Articles) >
   group (usually a person). `order` is the only sort knob — sections and
   groups inherit the lowest order of the entries inside them.
+
+  `role: "profile"` marks a link that says where to find the person rather
+  than pointing at one thing they made — Shedler's Substack, Frederickson's
+  Facebook group. Those render up in the group's heading instead of as list
+  items, which stops the Substack titled "Jonathan Shedler" from appearing
+  directly under a heading that already says Jonathan Shedler.
 */
 const resources = defineCollection({
   loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/resources" }),
@@ -56,6 +62,7 @@ const resources = defineCollection({
     section: z.string(),
     group: z.string().optional(),
     format: z.enum(["podcast", "article", "newsletter", "group"]),
+    role: z.enum(["item", "profile"]).default("item"),
     source: z.string().optional(),
     byline: z.string().optional(),
     episode: z.string().optional(),

@@ -133,6 +133,21 @@ npm run build   # astro check && astro build && pagefind --site dist
 - Site-wide config (title, author, socials, feature flags) lives in
   `astro-paper.config.ts`, not scattered across components.
 
+## Which model to use
+
+Be intelligent about it rather than reaching for the biggest model by reflex.
+Sonnet handles most of the work here: converting a staged file into content,
+adding or editing an entry, copy fixes, dependency bumps, chasing a build
+error, dropping a tool into `public/tools/`.
+
+Save Opus for the work that actually benefits from it — high-level planning
+and design, visual and information-architecture decisions, restructuring a
+page or a schema, anything touching the design language, and untangling a
+problem whose shape isn't clear yet.
+
+If a task starts out routine and turns out to need real design judgment, say
+so and switch rather than muddling through.
+
 ## Deployment facts
 
 - Repo `gregab/gregab.github.io`, Pages source is **GitHub Actions** (not branch-based).
