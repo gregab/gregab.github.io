@@ -1,0 +1,523 @@
+---
+/*
+  A vertical timeline of books, alternating left and right of a coloured spine
+  that runs the length of the page. The alternation holds at every width — on
+  a phone the cards get small and the cover stacks above the title rather than
+  collapsing to a single column, because the zigzag *is* the timeline.
+
+  The spine is a five-stop gradient (--ct-tint-1..5 in theme.css) fading warm
+  to cool as you scroll, with an arrowhead at each end and the line dissolving
+  past both: the list has no first cause and no last entry. Each item samples
+  the same gradient at its own position, so its node, connector and cover
+  strip match the spine beside it.
+
+  Cover images: `entry.cover`, when set, is used as-is. Otherwise a small
+  client script below looks one up from Open Library at runtime (there is no
+  network access at build time). Pasting real cover URLs into
+  src/data/curiosity.ts — the /tools/curiosity-timeline generator emits them
+  as JSON — removes this lookup entirely, which is the better end state.
+*/
+import type { CuriosityEntry } from "@/data/curiosity";
+
+type Props = {
+  entries: CuriosityEntry[];
+};
+
+const { entries } = Astro.props;
+
+function metaLine(entry: CuriosityEntry): string {
+  const parts: string[] = [];
+  if (entry.author) parts.push(entry.author);
+  if (entry.series) parts.push("Series");
+  return parts.join(" · ");
+}
+
+// A leading article would make half the placeholders read "T".
+function initial(title: string): string {
+  const trimmed = title.trim();
+  const withoutArticle = trimmed.replace(/^(the|an|a)\s+/i, "");
+  return (withoutArticle.charAt(0) || trimmed.charAt(0) || "?").toUpperCase();
+}
+
+/*
+  Sample the spine gradient at an entry's position so its node and connector
+  are the colour of the line they touch. The stops live in theme.css (light
+  and dark swap them), so the mix has to happen in CSS rather than here —
+  color-mix between two adjacent tokens does it, and stays theme-aware.
+
+  Interpolating in oklab matches the gradient below, which also declares
+  oklab; a browser too old for `in oklab` falls back to sRGB in both places
+  at once, so the item colours never drift away from the spine.
+*/
+const TINT_STOPS = 5; // --ct-tint-1 .. --ct-tint-5
+
+function tintFor(index: number, total: number): string {
+  if (total < 2) return "var(--ct-tint-1)";
+  const t = (index / (total - 1)) * (TINT_STOPS - 1);
+  const lower = Math.min(Math.floor(t), TINT_STOPS - 2);
+  const pct = ((t - lower) * 100).toFixed(2);
+  return `color-mix(in oklab, var(--ct-tint-${lower + 2}) ${pct}%, var(--ct-tint-${lower + 1}))`;
+}
+---
+
+<div class="ct">
+  <ol class="ct-list">
+    {
+      entries.map((entry, i) => {
+        const meta = metaLine(entry);
+        const needsCover = !entry.cover;
+        // The display key covers are cached under (stable regardless of a
+        // `lookup` override); the query fields are what actually gets sent
+        // to Open Library.
+        const queryTitle = entry.lookup ?? entry.title;
+        const queryAuthor = entry.lookup ? "" : (entry.author ?? "");
+        return (
+          <li class="ct-item" style={`--ct-tint: ${tintFor(i, entries.length)}`}>
+            <a
+              class="ct-card"
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span
+                class="ct-cover"
+                data-initial={initial(entry.title)}
+                data-cover-key={needsCover ? `${entry.title}|${entry.author ?? ""}` : undefined}
+                data-cover-query-title={needsCover ? queryTitle : undefined}
+                data-cover-query-author={needsCover ? queryAuthor : undefined}
+              >
+                {/* Always in the template, even with no src yet: Astro
+                    scopes this stylesheet to [data-astro-cid-*], so an <img>
+                    created in the client script would match none of the
+                    cover styles and paint behind the placeholder. The script
+                    sets .src on this element instead. An <img> with no src
+                    attribute requests nothing and renders nothing. */}
+                <img
+                  src={entry.cover || undefined}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width="48"
+                  height="72"
+                />
+              </span>
+              <span class="ct-text">
+                <span class="ct-title mark-hover text-foreground text-xl font-semibold">
+                  {entry.title}
+                </span>
+                {meta && (
+                  <span class="ct-meta font-ui text-muted-foreground text-sm">
+                    {meta}
+                  </span>
+                )}
+              </span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+</div>
+
+<style>
+  .ct {
+    --ct-gutter: 2.5rem; /* width of the channel between card edge and spine */
+    --ct-spine: 50%; /* where the spine sits — centred at every width */
+    /* The connector spans card edge → spine, which is half the gutter
+       column: the gutter is centred on the spine, not beside it. */
+    --ct-conn: calc(var(--ct-gutter) / 2);
+    --ct-cover: 3rem; /* cover width; height follows 2:3 */
+    --ct-node-top: 0.95rem; /* node/connector height — first line of the title */
+    --ct-node: 0.5625rem; /* node diameter; must exceed --ct-width to hole the spine */
+    --ct-width: 3px; /* the spine's own weight */
+    /* How far the spine overshoots the list at each end. The arrowheads sit
+       inside this runway and the line fades to nothing across it. */
+    --ct-run: 4rem;
+    position: relative;
+    max-width: 44rem;
+    margin: 0 auto;
+    padding-block: var(--ct-run);
+  }
+  .ct,
+  .ct *,
+  .ct *::before,
+  .ct *::after {
+    box-sizing: border-box;
+  }
+
+  /*
+    The arrowheads. They sit *inside* the fade rather than at the very tip,
+    so the line runs on past them and dissolves — an arrow pointing at
+    something that keeps going, not a line that stops in a point. Each is
+    masked toward its tip for the same reason.
+  */
+  .ct::before,
+  .ct::after {
+    content: "";
+    position: absolute;
+    left: var(--ct-spine);
+    width: 0.75rem;
+    height: 0.85rem;
+    margin-left: -0.375rem;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .ct::before {
+    top: 1.1rem;
+    background: var(--ct-tint-1);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.3), rgb(0 0 0));
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.3), rgb(0 0 0));
+  }
+  .ct::after {
+    bottom: 1.1rem;
+    background: var(--ct-tint-5);
+    clip-path: polygon(50% 100%, 100% 0, 0 0);
+    -webkit-mask-image: linear-gradient(to top, rgb(0 0 0 / 0.3), rgb(0 0 0));
+    mask-image: linear-gradient(to top, rgb(0 0 0 / 0.3), rgb(0 0 0));
+  }
+
+  .ct-list {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ct-list::before {
+    /* the spine */
+    content: "";
+    position: absolute;
+    top: calc(-1 * var(--ct-run));
+    bottom: calc(-1 * var(--ct-run));
+    left: var(--ct-spine);
+    width: var(--ct-width);
+    margin-left: calc(var(--ct-width) / -2);
+    /* sRGB fallback first for browsers without gradient interpolation
+       spaces — it still runs the same five stops, just a shade duller
+       through the crossfades. */
+    background: linear-gradient(
+      var(--ct-tint-1),
+      var(--ct-tint-2),
+      var(--ct-tint-3),
+      var(--ct-tint-4),
+      var(--ct-tint-5)
+    );
+    background: linear-gradient(
+      to bottom in oklab,
+      var(--ct-tint-1),
+      var(--ct-tint-2),
+      var(--ct-tint-3),
+      var(--ct-tint-4),
+      var(--ct-tint-5)
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      rgb(0 0 0) var(--ct-run),
+      rgb(0 0 0) calc(100% - var(--ct-run)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      rgb(0 0 0) var(--ct-run),
+      rgb(0 0 0) calc(100% - var(--ct-run)),
+      transparent 100%
+    );
+  }
+
+  .ct-item {
+    position: relative;
+    display: grid;
+    align-items: start;
+    grid-template-columns: 1fr var(--ct-gutter) 1fr;
+  }
+  .ct-item + .ct-item {
+    margin-top: 1.5rem;
+  }
+  .ct-item::before {
+    /* the node — punches a hole in the spine at rest */
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: var(--ct-spine);
+    top: var(--ct-node-top);
+    width: var(--ct-node);
+    height: var(--ct-node);
+    margin: calc(var(--ct-node) / -2) 0 0 calc(var(--ct-node) / -2);
+    border-radius: 50%;
+    border: 1.5px solid var(--ct-tint);
+    background: var(--background);
+  }
+  .ct-item:has(> .ct-card:hover)::before,
+  .ct-item:focus-within::before {
+    background: var(--ct-tint);
+  }
+
+  .ct-card {
+    /* odd items: left of the spine */
+    position: relative;
+    grid-column: 1;
+    justify-self: end;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 0.8rem;
+    align-items: flex-start;
+    max-width: 19rem;
+    text-align: right;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ct-item:nth-child(even) > .ct-card {
+    /* even items: right of the spine */
+    grid-column: 3;
+    justify-self: start;
+    flex-direction: row;
+    text-align: left;
+  }
+  .ct-card::after {
+    /* connector, card edge → node */
+    content: "";
+    position: absolute;
+    top: var(--ct-node-top);
+    height: 1px;
+    width: var(--ct-conn);
+    right: calc(-1 * var(--ct-conn));
+    background: color-mix(in oklab, var(--ct-tint) 55%, transparent);
+  }
+  .ct-item:nth-child(even) > .ct-card::after {
+    right: auto;
+    left: calc(-1 * var(--ct-conn));
+  }
+
+  .ct-cover {
+    position: relative;
+    flex: none;
+    width: var(--ct-cover);
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    background: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .ct-cover::before {
+    /* the placeholder's centred initial */
+    content: attr(data-initial);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--muted-foreground);
+  }
+  .ct-cover::after {
+    /* placeholder "book spine" strip, in this entry's colour */
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: var(--ct-tint);
+  }
+  .ct-cover img {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ct-text {
+    min-width: 0;
+    padding-top: 0.1rem;
+    /* The title is inline, so its own line-height loses to the block's
+       strut — 1.65 inherited from body, which pulls a wrapped title apart
+       into two separate-looking lines. Set it here, where it takes. */
+    line-height: 1.35;
+  }
+  .ct-title {
+    display: inline;
+    line-height: 1.35;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  /* mark-hover only lights up on hovering/focusing the title span itself;
+     the whole card is the link, so extend the same trigger to the card. The
+     extra .mark-hover in the selector keeps this ahead of the utility's own
+     specificity regardless of stylesheet order. */
+  .ct-card:hover .ct-title.mark-hover,
+  .ct-card:focus-visible .ct-title.mark-hover {
+    background-size: 100% 0.95em;
+  }
+  .ct-meta {
+    display: block;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+  }
+
+  /*
+    Phones keep the spine centred and keep alternating — the zigzag is what
+    makes it read as a timeline rather than a list, and collapsing it to a
+    left rail threw that away. Half of ~343px is too narrow for a cover
+    beside a title, so the card stacks instead: cover on top, hugging the
+    spine, title beneath it. Everything shrinks a step to pay for it.
+  */
+  @media (max-width: 40rem) {
+    .ct {
+      --ct-gutter: 1.5rem;
+      --ct-cover: 2.25rem;
+      --ct-node-top: 1.7rem; /* centre of the stacked cover */
+      --ct-node: 0.5rem;
+      --ct-width: 2.5px;
+      --ct-run: 3rem;
+    }
+    .ct-item + .ct-item {
+      margin-top: 1.15rem;
+    }
+    .ct-card,
+    .ct-item:nth-child(even) > .ct-card {
+      flex-direction: column;
+      gap: 0.4rem;
+      width: 100%;
+      max-width: none;
+    }
+    .ct-card {
+      align-items: flex-end;
+    }
+    .ct-item:nth-child(even) > .ct-card {
+      align-items: flex-start;
+    }
+    /* Down a step from the 20px list title: at this measure 20px runs to
+       three or four words a line. Tailwind's text-xl is in @layer utilities,
+       so this unlayered rule wins without !important. */
+    .ct-text {
+      padding-top: 0;
+      line-height: 1.3;
+    }
+    .ct-title {
+      font-size: 0.9375rem;
+      line-height: 1.3;
+    }
+    .ct-meta {
+      font-size: 0.75rem;
+      margin-top: 0.2rem;
+    }
+  }
+</style>
+
+<script>
+  // Runtime Open Library cover lookup. No network access at build time, so
+  // this fills in `entry.cover` when the data file leaves it blank. Every
+  // localStorage/fetch call is wrapped so a blocked or flaky network can
+  // never throw past this script — the drawn placeholder is always a safe
+  // landing.
+  //
+  // Baking real cover URLs into src/data/curiosity.ts (the
+  // /tools/curiosity-timeline generator emits them as JSON) removes this
+  // lookup entirely and is the better end state than depending on this at
+  // runtime forever.
+  const CACHE_PREFIX = "ct-cover:v1:";
+  const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const CONCURRENCY = 4;
+
+  function readCache(key: string): { url: string; ts: number } | undefined {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.ts !== "number" || typeof parsed?.url !== "string") {
+        return undefined;
+      }
+      return parsed;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function writeCache(key: string, url: string): void {
+    try {
+      localStorage.setItem(
+        CACHE_PREFIX + key,
+        JSON.stringify({ url, ts: Date.now() })
+      );
+    } catch {
+      // Storage unavailable or full — just skip caching this result.
+    }
+  }
+
+  async function lookupCover(
+    title: string,
+    author: string
+  ): Promise<string> {
+    try {
+      const params = new URLSearchParams({
+        title,
+        limit: "1",
+        fields: "cover_i",
+      });
+      if (author) params.set("author", author);
+      const res = await fetch(
+        `https://openlibrary.org/search.json?${params.toString()}`
+      );
+      if (!res.ok) return "";
+      const data = await res.json();
+      const coverId = data?.docs?.[0]?.cover_i;
+      return typeof coverId === "number"
+        ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+        : "";
+    } catch {
+      // Network error (or blocked, as in this sandbox) — treat as "no
+      // result this time" without caching, so it's retried on a later visit
+      // rather than being permanently written off.
+      return "__error__";
+    }
+  }
+
+  function applyCover(cover: HTMLElement, url: string): void {
+    const img = cover.querySelector("img");
+    if (!img) return;
+    img.onerror = () => img.removeAttribute("src");
+    img.src = url;
+  }
+
+  async function worker(queue: HTMLElement[]): Promise<void> {
+    let item: HTMLElement | undefined;
+    while ((item = queue.shift())) {
+      const key = item.dataset.coverKey;
+      const queryTitle = item.dataset.coverQueryTitle;
+      const queryAuthor = item.dataset.coverQueryAuthor ?? "";
+      if (!key || !queryTitle) continue;
+
+      const cached = readCache(key);
+      if (cached && Date.now() - cached.ts < TTL_MS) {
+        if (cached.url) applyCover(item, cached.url);
+        continue;
+      }
+
+      const url = await lookupCover(queryTitle, queryAuthor);
+      if (url === "__error__") continue; // don't cache, retry later
+      writeCache(key, url);
+      if (url) applyCover(item, url);
+    }
+  }
+
+  function resolveCovers(): void {
+    const covers = document.querySelectorAll<HTMLElement>(
+      ".ct-cover[data-cover-key]:not([data-ct-resolved])"
+    );
+    if (covers.length === 0) return;
+
+    const queue: HTMLElement[] = [];
+    covers.forEach(cover => {
+      cover.dataset.ctResolved = "1";
+      queue.push(cover);
+    });
+
+    const workers = Array.from({ length: CONCURRENCY }, () => worker(queue));
+    void Promise.all(workers);
+  }
+
+  document.addEventListener("astro:page-load", resolveCovers);
+</script>

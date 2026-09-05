@@ -35,7 +35,7 @@
   --accent-foreground: #fffdfa;
   --muted: #ebe3d8;
   --muted-foreground: #736659;
-  --border: #e4dbd0;
+  --border: #d8ccbc;
   --mark: 244 200 106;
   --mark-alpha: 0.5;
 }
@@ -50,7 +50,37 @@
   --accent-foreground: #1e1a18;
   --muted: #352e2a;
   --muted-foreground: #a89a8d;
-  --border: #3a322c;
-  --mark: 214 165 74;
-  --mark-alpha: 0.4;
+  --border: #4a4038;
+  --mark: 233 186 96;
+  --mark-alpha: 0.34;
+}
+
+/*
+  The curiosity timeline's spine runs a gradient down the page — the reading
+  life it plots is decades long, so the line changes colour over that distance
+  rather than holding one note. The arc is warm-to-cool: gold, terracotta,
+  rose, violet, slate. It ends on --accent, the site's one cool value, so the
+  timeline lands somewhere the palette already owns instead of introducing a
+  sixth colour. Every stop is desaturated enough to sit on the paper rather
+  than shout off it.
+
+  Five stops, sampled per entry in CuriosityTimeline.astro with color-mix, so
+  each book's node and connector match the spine beside it. Adding or removing
+  a stop means updating TINT_STOPS there too.
+*/
+:root,
+[data-theme="light"] {
+  --ct-tint-1: #c8912f;
+  --ct-tint-2: #b5673f;
+  --ct-tint-3: #9d5a72;
+  --ct-tint-4: #6b5f96;
+  --ct-tint-5: #35566e;
+}
+
+[data-theme="dark"] {
+  --ct-tint-1: #dcaa5c;
+  --ct-tint-2: #cf8a63;
+  --ct-tint-3: #bd7f96;
+  --ct-tint-4: #918cc0;
+  --ct-tint-5: #9db8cc;
 }

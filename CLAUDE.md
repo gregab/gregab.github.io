@@ -22,7 +22,7 @@ into the right place in `src/`, and deploy.
 | `bio.md`              | the bio section of `src/pages/index.astro` |
 | `Essays/*.md`         | `src/content/essays/`                |
 | `Books/*.md`          | `src/content/books/`                 |
-| `Resources/*.md`      | `src/content/resources/`             |
+| `Resources/*.md`      | `src/content/resources/` — use the `resources` skill |
 | `Notes for Claude.md` | context and todos — never published  |
 
 Greg writes prose only. Frontmatter, filenames, slugs and dates are yours to
@@ -55,7 +55,8 @@ portable markdown.
 
 ## What is public right now
 
-The site is deliberately minimal: the homepage bio, `/resources` and `/tools`.
+The site is deliberately minimal: the homepage bio, `/curiosity`, `/resources`
+and `/tools`.
 Everything else is **parked, not deleted** — Greg wants to publish those sections
 when he has real content, so the code and schemas all still exist.
 
@@ -105,6 +106,12 @@ npm run build   # astro check && astro build && pagefind --site dist
   - Renaming a tool leaves a redirect stub at the old filename so existing links
     survive. `tools.ts` skips any file containing an `http-equiv="refresh"`, so
     stubs don't appear as extra tools.
+- **Resources** are never hand-edited. `npm run resources -- <cmd>` (see
+  `scripts/resources.mjs`) owns slugs, `order` numbers and file layout; it keeps
+  `order` at 1..N in render order so re-arranging is one command instead of
+  renumbering every file. The **`resources` skill**
+  (`.claude/skills/resources/SKILL.md`) has the whole pipeline from a staged
+  Obsidian note to a deployed page — read it before touching `/resources`.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom
@@ -122,11 +129,55 @@ npm run build   # astro check && astro build && pagefind --site dist
   is the same mark held open. Apply `marked` to *text* links only — it looks
   like a stray underline under icon-only links, which is why `LinkButton`
   does not apply it by default.
+- **The mark is rationed.** `marked` (visible at rest) is for links inside
+  prose, where it's the only thing telling you a phrase mid-sentence is
+  clickable, and for the current nav item. Every link in a *list* uses
+  `mark-hover` instead — bare ink at rest, mark on hover. In a list of links
+  "this is a link" is already obvious, so a resting mark on each one is
+  decoration, and a page of them reads as stripes. All three paint against the
+  content box, not the padded box; anchoring to the padded box put the swipe
+  below the word on anything with vertical padding.
+- **The measure is the point.** 40rem column, 18px body, 1.65 leading — about
+  68 characters a line. Newsreader has a small x-height and reads a size
+  smaller than it measures, so 16px in the old 48rem column ran to 91
+  characters. Don't widen `max-w-app` or shrink the body without recounting.
+- **The type scale is 30 / 22 / 20 / 18 / 14px** (page title, person or section
+  heading, list title, body, meta). Note 18px body is exactly Tailwind's
+  `text-lg`, so `text-lg` no longer reads as "large" — list titles need
+  `text-xl` or above to keep their step.
+- **Page subtitles are chrome, not prose** — Plex Sans, muted, roman. Italic
+  serif at body size read as a pull-quote.
+- **The homepage has no heading.** The site name in the header is its `<h1>`;
+  the page opens on a short amber stroke (`mark-rule`, the highlighter reduced
+  to a single mark) and a lead paragraph. The 48px "Welcome" that used to sit
+  there spent the largest type on the page on the least informative line.
 - **No filled buttons anywhere.** Bordered or text-only.
+- **The curiosity timeline's spine is the one place colour runs free**, and it
+  is not a violation of the rule above — it is chrome, never a link treatment.
+  `--ct-tint-1..5` in `theme.css` are five stops (gold → terracotta → rose →
+  violet → slate) that the spine crossfades through over the length of the page,
+  and each entry samples the same gradient with `color-mix` so its node,
+  connector and cover strip match the line beside it. It ends on `--accent`, so
+  the arc lands on a colour the palette already owns. Titles there still take
+  the amber `mark-hover` like every other list link.
+- **That spine is a double-headed arrow that fades out at both ends**, and the
+  arrowheads deliberately sit *inside* the fade rather than at the tips: the
+  line runs past them and dissolves. The list has no first cause and no last
+  entry, and the graphic should say so. The runway this needs is `--ct-run`;
+  don't reclaim it as stray padding.
+- **The timeline alternates left/right at every width, phones included.** The
+  zigzag is what makes it read as a timeline rather than a list, so narrow
+  screens shrink the card and stack the cover above the title instead of
+  collapsing to a single left rail.
 - **Fonts:** Newsreader for headings and body (one family, so the page has one
   voice), IBM Plex Sans for chrome only, IBM Plex Mono for code and tools.
-  Newsreader must keep a `ttf` in its `formats` — satori renders the OG images
-  and cannot parse woff2 (`src/utils/getFontPathByWeight.ts` skips woff2).
+  They come from the `@fontsource/*` devDependencies via Astro's **local** font
+  provider, so `npm run build` never touches the network for a typeface — see
+  the comment block in `astro.config.ts` for why `fontProviders.npm()` doesn't
+  work for this and what the tradeoff is. Every variant must keep a **woff**
+  alongside its woff2: satori renders the OG images and cannot parse woff2
+  (`src/utils/getFontPathByWeight.ts` skips it). Changing a weight or style
+  means the variant list in `astro.config.ts`, not a Google Fonts URL.
 - **Search** is static, via Pagefind (`astro-paper.config.ts` → `features.search`).
   It only works after a production build — `public/pagefind/` is generated by
   `npm run build` and is gitignored.
@@ -155,3 +206,11 @@ so and switch rather than muddling through.
   proxying breaks GitHub's cert issuance).
 - Greg does not want to review diffs before they land. Commit and push completed
   work directly; don't ask for approval on ordinary changes.
+- **Finish the job by deploying.** Ordinary work is not done sitting on a
+  branch — merge it to `main` and push, which is what deploys. Do that by
+  default, without being asked, once the work is complete and `npm run build`
+  passes (or the only failure is environmental, like a sandbox blocking the
+  font fetch — say so if you couldn't build).
+  Stop and ask first only when merging is genuinely not safe: the build is
+  broken, the change touches something Greg is mid-conversation about, or it
+  publishes content he hasn't named (see the staging-folder rules above).

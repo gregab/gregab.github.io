@@ -1,0 +1,841 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curiosity Timeline</title>
+<meta name="description" content="Paste a list of Goodreads book and series links and get a copy-paste HTML and CSS snippet for a vertical reading timeline, with optional Open Library author and cover lookup.">
+<style>
+  :root {
+    --paper: #F2F3EE;
+    --sheet: #FDFDFB;
+    --ink: #22271F;
+    --muted: #737A70;
+    --rule: #CDD2C7;
+    --rule-strong: #A9B0A2;
+    --mark: 200, 206, 78;
+    --quiet: 115, 122, 112;
+    --focus: #3F5D8C;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 18px;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-decoration: none;
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .back:hover { color: var(--focus); }
+
+  header { margin-bottom: 28px; max-width: 60ch; }
+  h1 {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; }
+
+  section.step { margin-bottom: 34px; }
+  .step-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  h2 {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 19px;
+    font-weight: 400;
+    margin: 0;
+  }
+  .step-help { margin: 0 0 12px; color: var(--muted); font-size: 13px; max-width: 68ch; }
+
+  textarea, input[type="text"] {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    padding: 8px 9px;
+  }
+  textarea { width: 100%; resize: vertical; }
+  #input { min-height: 130px; font-family: ui-monospace, "IBM Plex Mono", Menlo, monospace; font-size: 13px; line-height: 1.5; }
+
+  .row-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .btn:hover { background: rgba(var(--quiet), 0.08); }
+  .btn:disabled { opacity: 0.45; cursor: default; background: var(--sheet); }
+
+  .notice { font-size: 13px; color: var(--muted); margin: 10px 0 0; min-height: 1.2em; }
+  .notice.warn { color: #8a5a1f; }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  /* ---- entries table ---- */
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    background: var(--sheet);
+  }
+  table.entries { width: 100%; min-width: 880px; border-collapse: collapse; }
+  table.entries th, table.entries td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: middle;
+  }
+  table.entries th {
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom-color: var(--rule-strong);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+  }
+  table.entries tbody tr:last-child td { border-bottom: 0; }
+  table.entries input[type="text"] { width: 100%; min-width: 9em; }
+  table.entries td.ctl { white-space: nowrap; width: 1%; }
+  table.entries td.thumb { width: 1%; }
+  table.entries td.linkcell { width: 1%; white-space: nowrap; }
+  table.entries td.chk { width: 1%; white-space: nowrap; }
+  table.entries td.status { width: 1%; white-space: nowrap; font-size: 12px; color: var(--muted); }
+
+  .icon {
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .icon:hover { background: rgba(var(--quiet), 0.08); }
+  .icon:disabled { opacity: 0.3; cursor: default; }
+  .icon.rm { color: #8a3b2b; }
+  td.ctl .icon + .icon { margin-left: 3px; }
+
+  .thumbbox {
+    display: block;
+    width: 18px;
+    aspect-ratio: 2 / 3;
+    border: 1px dashed var(--rule-strong);
+    background: rgba(var(--quiet), 0.06);
+    overflow: hidden;
+  }
+  .thumbbox img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  .gr-link { color: var(--focus); font-size: 12.5px; text-decoration: none; }
+  .gr-link:hover { text-decoration: underline; }
+  .muted { color: var(--muted); }
+
+  label.series-lbl { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  label.series-lbl input { accent-color: var(--focus); }
+
+  tr.empty-row td { text-align: center; color: var(--muted); font-size: 13px; padding: 26px 10px; }
+
+  /* ---- options ---- */
+  .opts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 18px;
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    padding: 16px 18px;
+  }
+  .opt-field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .opt-field select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 7px 8px;
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink);
+  }
+  .opt-field input[type="text"] { width: 100%; }
+  .opt-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .opt-check input { accent-color: var(--focus); }
+  .opt-color { display: flex; align-items: center; gap: 10px; }
+  .opt-color input[type="color"] {
+    width: 40px; height: 32px; padding: 0; border: 1px solid var(--rule-strong);
+    border-radius: 3px; background: var(--sheet); cursor: pointer;
+  }
+  .opt-color code { font-size: 12.5px; color: var(--muted); }
+
+  /* ---- preview ---- */
+  .previewwrap {
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    padding: 32px 20px;
+  }
+  #preview { min-height: 60px; }
+
+  /* ---- output ---- */
+  #output {
+    width: 100%;
+    min-height: 220px;
+    font-family: ui-monospace, "IBM Plex Mono", Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.5;
+    white-space: pre;
+  }
+  .out-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .said { font-size: 13px; color: var(--muted); }
+  .bytesize { font-size: 12.5px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+  .note {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--muted);
+    max-width: 72ch;
+  }
+  .note p { margin: 0 0 7px; }
+
+  @media (max-width: 720px) {
+    .opts { grid-template-columns: 1fr; }
+    .previewwrap { padding: 24px 12px; }
+  }
+</style>
+
+<div class="wrap">
+  <a class="back" href="/tools">&larr; All tools</a>
+  <header>
+    <h1>Curiosity Timeline</h1>
+    <p class="sub">Paste Goodreads links, edit the details, then copy a self-contained HTML and CSS snippet for a vertical reading timeline &mdash; no build step, no JavaScript in the output.</p>
+  </header>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">1</span><h2>Paste your list</h2></div>
+    <p class="step-help">One Goodreads URL per line &mdash; book or series pages both work. Blank lines and lines starting with <code>#</code> are ignored.</p>
+    <textarea id="input" placeholder="https://www.goodreads.com/book/show/375802.Ender_s_Game&#10;https://www.goodreads.com/series/40340-redwall"></textarea>
+    <div class="row-actions">
+      <button class="btn" id="parseBtn" type="button">Parse list</button>
+      <button class="btn" id="lookupBtn" type="button">Look up details</button>
+      <span class="notice" id="lookupNotice"></span>
+    </div>
+    <p class="notice" id="parseNotice"></p>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">2</span><h2>Edit entries</h2></div>
+    <p class="step-help">Titles are guessed from the URL slug &mdash; fix any that guessed wrong. Reorder with the arrows; the first row is the earliest item and sits at the top of the timeline.</p>
+    <div class="tablewrap">
+      <table class="entries">
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">Cover</th>
+            <th scope="col">Title</th>
+            <th scope="col">Author</th>
+            <th scope="col">Cover URL</th>
+            <th scope="col">Link</th>
+            <th scope="col">Series</th>
+            <th scope="col">Status</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="row-actions">
+      <button class="btn" id="addRowBtn" type="button">+ Add row</button>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">3</span><h2>Options</h2></div>
+    <div class="opts">
+      <div class="opt-field">
+        <label for="optHeading">Heading text</label>
+        <input type="text" id="optHeading" value="Curiosity Timeline">
+      </div>
+      <div class="opt-field">
+        <label for="optLayout">Layout</label>
+        <select id="optLayout">
+          <option value="alt">Alternating</option>
+          <option value="single">Single column</option>
+        </select>
+      </div>
+      <div class="opt-field">
+        <label for="optAccent">Accent colour</label>
+        <div class="opt-color">
+          <input type="color" id="optAccent" value="#d9a441">
+          <code id="optAccentVal">#d9a441</code>
+        </div>
+      </div>
+      <div class="opt-field">
+        <label>&nbsp;</label>
+        <label class="opt-check"><input type="checkbox" id="optCovers" checked> Show covers</label>
+      </div>
+      <div class="opt-field">
+        <label>&nbsp;</label>
+        <label class="opt-check"><input type="checkbox" id="optNewTab" checked> Open links in a new tab</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">4</span><h2>Preview</h2></div>
+    <p class="step-help">This is the actual generated markup and styles, rendered live &mdash; what you copy below is what you see here.</p>
+    <div class="previewwrap"><div id="preview"></div></div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><span class="step-num">5</span><h2>Copy</h2></div>
+    <textarea id="output" readonly></textarea>
+    <div class="out-actions">
+      <button class="btn" id="copyHtml" type="button">Copy HTML</button>
+      <button class="btn" id="copyJson" type="button">Copy data (JSON)</button>
+      <span class="bytesize" id="outSize"></span>
+      <span class="said" id="said"></span>
+    </div>
+  </section>
+
+  <div class="note">
+    <p>Cover and author lookups query <code>openlibrary.org</code> directly from your browser and never touch this site's server. A failed or missing match just leaves a row as-is &mdash; edit it by hand or try the lookup again later.</p>
+    <p>The HTML snippet is self-contained: one <code>&lt;style&gt;</code> block and one <code>&lt;div&gt;</code>, no JavaScript. The only thing it fetches once pasted onto a page is the cover images, if you kept any.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var el = function (id) { return document.getElementById(id); };
+
+  /** @type {Array<{title:string, author:string, url:string, series:boolean, cover:string, _status:string}>} */
+  var entries = [];
+
+  // ---------- parsing ----------
+
+  var GR_RE = /^(?:https?:\/\/)?(?:www\.)?goodreads\.com\/(book\/show|series)\/(\d+)(?:[-._]([A-Za-z0-9_-]+))?(?:[\/?#].*)?$/i;
+
+  var SMALL_WORDS = { a: 1, an: 1, the: 1, of: 1, and: 1, or: 1, in: 1, on: 1, for: 1, to: 1 };
+
+  function titleFromSlug(slug) {
+    if (!slug) return '';
+    var spaced = slug.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!spaced) return '';
+    // Book slugs already carry their real casing (Goodreads builds them from
+    // the title itself, e.g. "Ender_s_Game"). Series slugs, and the newer
+    // dash-only book slugs Goodreads slugifies to all-lowercase, carry no
+    // signal at all — Title Case those, leaving small words lowercase unless
+    // first.
+    if (!/[A-Z]/.test(spaced)) {
+      spaced = spaced
+        .split(' ')
+        .map(function (w, i) {
+          var lw = w.toLowerCase();
+          if (i > 0 && SMALL_WORDS[lw]) return lw;
+          return lw.charAt(0).toUpperCase() + lw.slice(1);
+        })
+        .join(' ');
+    }
+    // Restore apostrophes Goodreads strips: "Ender s Game" -> "Ender's Game".
+    // {2,} on the first group keeps single-letter fragments like the "G" in
+    // "G del Escher Bach" from being treated as a contraction stem.
+    spaced = spaced.replace(/\b(\w{2,})\s(s|t|d|ll|re|ve|m)\b/gi, "$1'$2");
+    return spaced;
+  }
+
+  function parseGoodreadsLine(line) {
+    var m = line.match(GR_RE);
+    if (!m) return null;
+    return {
+      url: line,
+      series: m[1].toLowerCase() === 'series',
+      title: titleFromSlug(m[3] || ''),
+    };
+  }
+
+  function parseInput(text) {
+    var lines = text.split(/\r\n|\r|\n/);
+    var added = 0, dup = 0, skipped = 0;
+    var seen = {};
+    entries.forEach(function (e) { seen[e.url] = true; });
+    lines.forEach(function (raw) {
+      var line = raw.trim();
+      if (!line || line.charAt(0) === '#') return;
+      var parsed = parseGoodreadsLine(line);
+      if (!parsed) { skipped++; return; }
+      if (seen[parsed.url]) { dup++; return; }
+      seen[parsed.url] = true;
+      entries.push({ title: parsed.title, author: '', url: parsed.url, series: parsed.series, cover: '', _status: '' });
+      added++;
+    });
+    return { added: added, dup: dup, skipped: skipped };
+  }
+
+  function noticeText(r) {
+    var parts = [];
+    parts.push(r.added + (r.added === 1 ? ' entry added' : ' entries added'));
+    if (r.dup) parts.push(r.dup + (r.dup === 1 ? ' already in the list' : ' already in the list'));
+    if (r.skipped) parts.push(r.skipped + (r.skipped === 1 ? ' line skipped — not a Goodreads link' : ' lines skipped — not Goodreads links'));
+    return parts.join('. ') + '.';
+  }
+
+  el('parseBtn').addEventListener('click', function () {
+    var text = el('input').value;
+    var r = parseInput(text);
+    var notice = el('parseNotice');
+    notice.textContent = noticeText(r);
+    notice.className = 'notice' + (r.skipped ? ' warn' : '');
+    renderTable();
+    update();
+  });
+
+  // ---------- table ----------
+
+  // A leading article would make half the placeholders read "T".
+  function coverInitial(title) {
+    var t = String(title).trim().replace(/^(the|an|a)\s+/i, '');
+    return (t.charAt(0) || String(title).trim().charAt(0) || '?').toUpperCase();
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function statusLabel(e) {
+    if (e._status === 'looking') return 'looking up…';
+    if (e._status === 'notfound') return 'not found';
+    return '';
+  }
+
+  function rowHtml(e, i, total) {
+    var thumb = e.cover
+      ? '<img src="' + esc(e.cover) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+      : '';
+    var link = e.url
+      ? '<a class="gr-link" href="' + esc(e.url) + '" target="_blank" rel="noopener noreferrer">open ↗</a>'
+      : '<span class="muted">—</span>';
+    return (
+      '<tr data-idx="' + i + '">' +
+        '<td class="ctl">' +
+          '<button type="button" class="icon up" data-act="up"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move up">↑</button>' +
+          '<button type="button" class="icon down" data-act="down"' + (i === total - 1 ? ' disabled' : '') + ' aria-label="Move down">↓</button>' +
+        '</td>' +
+        '<td class="thumb"><span class="thumbbox">' + thumb + '</span></td>' +
+        '<td><input type="text" class="f" data-f="title" value="' + esc(e.title) + '" placeholder="Title"></td>' +
+        '<td><input type="text" class="f" data-f="author" value="' + esc(e.author) + '" placeholder="Author"></td>' +
+        '<td><input type="text" class="f" data-f="cover" value="' + esc(e.cover) + '" placeholder="Cover image URL"></td>' +
+        '<td class="linkcell">' + link + '</td>' +
+        '<td class="chk"><label class="series-lbl"><input type="checkbox" class="f" data-f="series"' + (e.series ? ' checked' : '') + '> series</label></td>' +
+        '<td class="status">' + statusLabel(e) + '</td>' +
+        '<td><button type="button" class="icon rm" data-act="remove" aria-label="Remove row">✕</button></td>' +
+      '</tr>'
+    );
+  }
+
+  function renderTable() {
+    var tbody = el('rows');
+    if (!entries.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No entries yet — paste a list above and click Parse, or add a row by hand.</td></tr>';
+      return;
+    }
+    var html = '';
+    entries.forEach(function (e, i) { html += rowHtml(e, i, entries.length); });
+    tbody.innerHTML = html;
+  }
+
+  el('rows').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button[data-act]');
+    if (!btn) return;
+    var tr = btn.closest('tr[data-idx]');
+    if (!tr) return;
+    var i = parseInt(tr.getAttribute('data-idx'), 10);
+    var act = btn.getAttribute('data-act');
+    if (act === 'up' && i > 0) {
+      var a = entries[i - 1]; entries[i - 1] = entries[i]; entries[i] = a;
+    } else if (act === 'down' && i < entries.length - 1) {
+      var b = entries[i + 1]; entries[i + 1] = entries[i]; entries[i] = b;
+    } else if (act === 'remove') {
+      entries.splice(i, 1);
+    } else {
+      return;
+    }
+    renderTable();
+    update();
+  });
+
+  el('rows').addEventListener('input', function (ev) {
+    var input = ev.target.closest('input.f[data-f]');
+    if (!input) return;
+    var tr = input.closest('tr[data-idx]');
+    var i = parseInt(tr.getAttribute('data-idx'), 10);
+    var field = input.getAttribute('data-f');
+    var e = entries[i];
+    if (!e) return;
+    if (input.type === 'checkbox') {
+      e[field] = input.checked;
+    } else {
+      e[field] = input.value;
+    }
+    if (field === 'cover') {
+      var box = tr.querySelector('.thumbbox');
+      box.innerHTML = e.cover ? '<img src="' + esc(e.cover) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' : '';
+    }
+    update();
+  });
+
+  el('rows').addEventListener('change', function (ev) {
+    var input = ev.target.closest('input[type="checkbox"][data-f]');
+    if (!input) return;
+    var tr = input.closest('tr[data-idx]');
+    var i = parseInt(tr.getAttribute('data-idx'), 10);
+    var e = entries[i];
+    if (e) e[input.getAttribute('data-f')] = input.checked;
+    update();
+  });
+
+  el('addRowBtn').addEventListener('click', function () {
+    entries.push({ title: '', author: '', url: '', series: false, cover: '', _status: '' });
+    renderTable();
+    update();
+  });
+
+  // ---------- Open Library lookup ----------
+
+  function needsLookup(e) { return !e.author || !e.cover; }
+
+  function olQuery(title, author, byQOnly) {
+    var qs = byQOnly
+      ? 'q=' + encodeURIComponent(title)
+      : 'title=' + encodeURIComponent(title) + (author ? '&author=' + encodeURIComponent(author) : '');
+    var url = 'https://openlibrary.org/search.json?' + qs + '&limit=1&fields=title,author_name,cover_i';
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
+    return fetch(url, ctrl ? { signal: ctrl.signal } : {})
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) { return (data && data.docs && data.docs[0]) || null; })
+      .catch(function () { return null; })
+      .then(function (doc) { if (timer) clearTimeout(timer); return doc; });
+  }
+
+  function lookupOne(e) {
+    return olQuery(e.title, e.author)
+      .then(function (doc) { return doc || olQuery(e.title, null, true); })
+      .then(function (doc) {
+        if (doc) {
+          if (!e.author && doc.author_name && doc.author_name[0]) e.author = doc.author_name[0];
+          if (!e.cover && doc.cover_i) e.cover = 'https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg';
+        }
+        e._status = (e.author && e.cover) ? '' : 'notfound';
+      })
+      .catch(function () { e._status = 'notfound'; });
+  }
+
+  var lookupRunning = false;
+
+  el('lookupBtn').addEventListener('click', function () {
+    if (lookupRunning) return;
+    var targets = entries.filter(needsLookup);
+    var noticeEl = el('lookupNotice');
+    if (!targets.length) {
+      noticeEl.textContent = entries.length
+        ? 'Every row already has an author and cover.'
+        : 'Add some entries first.';
+      return;
+    }
+    lookupRunning = true;
+    el('lookupBtn').disabled = true;
+    var total = targets.length, done = 0;
+    noticeEl.textContent = 'Looking up 0 of ' + total + '…';
+
+    var queue = targets.slice();
+    var active = 0;
+    var CONCURRENCY = 3;
+
+    function pump() {
+      if (!queue.length && active === 0) {
+        noticeEl.textContent = 'Done — checked ' + total + (total === 1 ? ' entry.' : ' entries.');
+        lookupRunning = false;
+        el('lookupBtn').disabled = false;
+        renderTable();
+        update();
+        return;
+      }
+      while (queue.length && active < CONCURRENCY) {
+        (function () {
+          var item = queue.shift();
+          active++;
+          item._status = 'looking';
+          renderTable();
+          lookupOne(item).then(function () {
+            active--; done++;
+            noticeEl.textContent = 'Looking up ' + done + ' of ' + total + '…';
+            renderTable();
+            update();
+            pump();
+          });
+        })();
+      }
+    }
+    pump();
+  });
+
+  // ---------- generation ----------
+
+  function readOptions() {
+    return {
+      heading: el('optHeading').value.trim(),
+      covers: el('optCovers').checked,
+      single: el('optLayout').value === 'single',
+      accent: el('optAccent').value || '#d9a441',
+      newTab: el('optNewTab').checked,
+    };
+  }
+
+  function buildCSS(o) {
+    var L = [];
+    L.push('.ct {');
+    L.push('  --ct-accent: ' + o.accent + ';');
+    L.push('  --ct-rule:  color-mix(in srgb, currentColor 22%, transparent);');
+    L.push('  --ct-faint: color-mix(in srgb, currentColor 7%, transparent);');
+    L.push('  --ct-muted: color-mix(in srgb, currentColor 66%, transparent);');
+    L.push('  --ct-mark:  color-mix(in srgb, var(--ct-accent) 48%, transparent);');
+    L.push('  --ct-gutter: 2.5rem;');
+    L.push('  --ct-spine: 50%;');
+    L.push('  --ct-conn: calc(var(--ct-gutter) / 2);');
+    L.push('  --ct-cover: 3rem;');
+    L.push('  max-width: 44rem;');
+    L.push('  margin: 0 auto;');
+    L.push('  color: inherit;');
+    L.push('  text-align: start;');
+    L.push('}');
+    L.push('.ct *, .ct *::before, .ct *::after { box-sizing: border-box; }');
+    L.push('');
+    if (o.heading) {
+      L.push('.ct-heading { margin: 0 0 1.75rem; text-align: center; font-size: 1.5rem;');
+      L.push('              font-weight: 600; letter-spacing: -0.01em; }');
+      L.push('');
+    }
+    L.push('.ct-list { position: relative; margin: 0; padding: 0; list-style: none; }');
+    L.push('.ct-list::before {');
+    L.push('  content: ""; position: absolute; top: .5rem; bottom: .5rem;');
+    L.push('  left: var(--ct-spine); width: 1px; margin-left: -.5px;');
+    L.push('  background: var(--ct-rule);');
+    L.push('}');
+    L.push('');
+    L.push('.ct-item { position: relative; display: grid; align-items: start;');
+    L.push('           grid-template-columns: 1fr var(--ct-gutter) 1fr; }');
+    L.push('.ct-item + .ct-item { margin-top: 1.5rem; }');
+    L.push('.ct-item::before {');
+    L.push('  content: ""; position: absolute; left: var(--ct-spine); top: .95rem;');
+    L.push('  width: .5rem; height: .5rem; margin: -.25rem 0 0 -.25rem;');
+    L.push('  border-radius: 50%; border: 1px solid var(--ct-rule);');
+    L.push('  background: #fff; background: Canvas;');
+    L.push('}');
+    L.push('.ct-item:has(> .ct-card:hover)::before, .ct-item:focus-within::before {');
+    L.push('  background: var(--ct-accent); border-color: var(--ct-accent);');
+    L.push('}');
+    L.push('');
+    L.push('.ct-card {');
+    L.push('  position: relative; grid-column: 1; justify-self: end;');
+    L.push('  display: flex; flex-direction: row-reverse; gap: .8rem; align-items: flex-start;');
+    L.push('  max-width: 19rem; text-align: right; text-decoration: none; color: inherit;');
+    L.push('}');
+    L.push('.ct-item:nth-child(even) > .ct-card {');
+    L.push('  grid-column: 3; justify-self: start; flex-direction: row; text-align: left;');
+    L.push('}');
+    L.push('.ct-card::after {');
+    L.push('  content: ""; position: absolute; top: .95rem; height: 1px;');
+    L.push('  width: var(--ct-conn); right: calc(-1 * var(--ct-conn));');
+    L.push('  background: var(--ct-rule);');
+    L.push('}');
+    L.push('.ct-item:nth-child(even) > .ct-card::after { right: auto; left: calc(-1 * var(--ct-conn)); }');
+    L.push('');
+    if (o.covers) {
+      L.push('.ct-cover { position: relative; flex: none; width: var(--ct-cover); aspect-ratio: 2/3;');
+      L.push('            overflow: hidden; background: var(--ct-faint); border: 1px solid var(--ct-rule); }');
+      L.push('.ct-cover::before { content: attr(data-initial); position: absolute; inset: 0;');
+      L.push('  display: flex; align-items: center; justify-content: center;');
+      L.push('  font-size: 1rem; color: var(--ct-muted); }');
+      L.push('.ct-cover::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0;');
+      L.push('  width: 2px; background: var(--ct-mark); }');
+      L.push('.ct-cover img { position: relative; z-index: 1; display: block;');
+      L.push('                width: 100%; height: 100%; object-fit: cover; }');
+      L.push('');
+    }
+    L.push('.ct-text { min-width: 0; padding-top: .1rem; }');
+    L.push('.ct-title { display: inline; font-size: 1rem; line-height: 1.35; font-weight: 600;');
+    L.push('  background-image: linear-gradient(var(--ct-mark) 0 100%);');
+    L.push('  background-repeat: no-repeat; background-position: 0 100%; background-size: 100% 0;');
+    L.push('  box-decoration-break: clone; -webkit-box-decoration-break: clone; }');
+    L.push('.ct-card:hover .ct-title, .ct-card:focus-visible .ct-title { background-size: 100% .95em; }');
+    L.push('.ct-meta { display: block; margin-top: .2rem; font-size: .8125rem; color: var(--ct-muted); }');
+    L.push('');
+    L.push('@media (prefers-reduced-motion: no-preference) {');
+    L.push('  .ct-item::before { transition: background-color 180ms ease, border-color 180ms ease; }');
+    L.push('  .ct-title { transition: background-size 180ms ease; }');
+    L.push('}');
+    L.push('');
+    L.push('@media (max-width: 40rem) {');
+    L.push('  .ct {');
+    L.push('    --ct-gutter: 1.5rem;');
+    L.push('    --ct-spine: .3rem;');
+    L.push('    --ct-conn: calc(var(--ct-gutter) - var(--ct-spine));');
+    L.push('  }');
+    L.push('  .ct-item { grid-template-columns: 0 var(--ct-gutter) 1fr; }');
+    L.push('  .ct-card, .ct-item:nth-child(even) > .ct-card {');
+    L.push('    grid-column: 3; justify-self: start; flex-direction: row;');
+    L.push('    text-align: left; max-width: none;');
+    L.push('  }');
+    L.push('  .ct-card::after, .ct-item:nth-child(even) > .ct-card::after {');
+    L.push('    left: calc(-1 * var(--ct-conn)); right: auto;');
+    L.push('  }');
+    L.push('}');
+    if (o.single) {
+      L.push('');
+      L.push('.ct--single {');
+      L.push('  --ct-spine: .3rem;');
+      L.push('  --ct-conn: calc(var(--ct-gutter) - var(--ct-spine));');
+      L.push('}');
+      L.push('.ct--single .ct-item { grid-template-columns: 0 var(--ct-gutter) 1fr; }');
+      L.push('.ct--single .ct-card, .ct--single .ct-item:nth-child(even) > .ct-card {');
+      L.push('  grid-column: 3; justify-self: start; flex-direction: row;');
+      L.push('  text-align: left; max-width: none;');
+      L.push('}');
+      L.push('.ct--single .ct-card::after, .ct--single .ct-item:nth-child(even) > .ct-card::after {');
+      L.push('  left: calc(-1 * var(--ct-conn)); right: auto;');
+      L.push('}');
+    }
+    return L.join('\n');
+  }
+
+  function buildMarkup(o) {
+    var L = [];
+    var cls = 'ct' + (o.single ? ' ct--single' : '');
+    L.push('<div class="' + cls + '">');
+    if (o.heading) L.push('  <h2 class="ct-heading">' + esc(o.heading) + '</h2>');
+    L.push('  <ol class="ct-list">');
+    entries.forEach(function (e) {
+      var title = e.title || 'Untitled';
+      var initial = esc(coverInitial(title));
+      L.push('    <li class="ct-item">');
+      var attrs = 'class="ct-card" href="' + esc(e.url) + '"' + (o.newTab ? ' target="_blank" rel="noopener noreferrer"' : '');
+      L.push('      <a ' + attrs + '>');
+      if (o.covers) {
+        L.push('        <span class="ct-cover" data-initial="' + initial + '">');
+        if (e.cover) L.push('          <img src="' + esc(e.cover) + '" alt="" loading="lazy" decoding="async" width="48" height="72">');
+        L.push('        </span>');
+      }
+      L.push('        <span class="ct-text">');
+      L.push('          <span class="ct-title">' + esc(title) + '</span>');
+      var meta = [];
+      if (e.author) meta.push(esc(e.author));
+      if (e.series) meta.push('Series');
+      L.push('          <span class="ct-meta">' + meta.join(' · ') + '</span>');
+      L.push('        </span>');
+      L.push('      </a>');
+      L.push('    </li>');
+    });
+    L.push('  </ol>');
+    L.push('</div>');
+    return L.join('\n');
+  }
+
+  function formatBytes(n) {
+    if (n < 1000) return n + ' B';
+    return (n / 1000).toFixed(1) + ' kB';
+  }
+
+  function update() {
+    var o = readOptions();
+    el('optAccentVal').textContent = o.accent;
+    var css = buildCSS(o);
+    var markup = buildMarkup(o);
+    var full = '<style>\n' + css + '\n</style>\n' + markup + '\n';
+    el('output').value = full;
+    el('preview').innerHTML = full;
+    var bytes = (typeof Blob !== 'undefined') ? new Blob([full]).size : full.length;
+    el('outSize').textContent = formatBytes(bytes);
+    el('said').textContent = '';
+  }
+
+  ['optHeading', 'optCovers', 'optLayout', 'optAccent', 'optNewTab'].forEach(function (id) {
+    el(id).addEventListener('input', update);
+    el(id).addEventListener('change', update);
+  });
+
+  // ---------- copy ----------
+
+  function copy(text, onDone) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onDone, function () {
+        el('output').select();
+        el('said').textContent = 'Copy blocked here — select the box and copy.';
+      });
+    } else {
+      el('output').select();
+      el('said').textContent = 'Copy blocked here — select the box and copy.';
+    }
+  }
+
+  el('copyHtml').addEventListener('click', function () {
+    copy(el('output').value, function () { el('said').textContent = 'Copied HTML.'; });
+  });
+
+  el('copyJson').addEventListener('click', function () {
+    var data = entries.map(function (e) {
+      var o = { title: e.title || '' };
+      if (e.author) o.author = e.author;
+      o.url = e.url || '';
+      if (e.series) o.series = true;
+      if (e.cover) o.cover = e.cover;
+      return o;
+    });
+    copy(JSON.stringify(data, null, 2), function () { el('said').textContent = 'Copied JSON.'; });
+  });
+
+  renderTable();
+  update();
+})();
+</script>

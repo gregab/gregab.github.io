@@ -3,14 +3,11 @@ import { getRelativeLocaleUrl } from "astro:i18n";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
-import Socials from "@/components/Socials.astro";
-import { useTranslations } from "@/i18n";
+import { Image } from "astro:assets";
+import portrait from "@/assets/photos/greg-portrait.jpg";
 import config from "@/config";
 
-const { socials } = config;
-
 const locale = Astro.currentLocale ?? config.site.lang;
-const t = useTranslations(locale);
 
 const homePath = getRelativeLocaleUrl(locale, "");
 ---
@@ -23,19 +20,51 @@ const homePath = getRelativeLocaleUrl(locale, "");
     data-home-path={homePath}
     class="app-layout my-1"
   >
-    <section id="hero" class="pt-8 pb-6">
-      <h1 class="my-4 text-4xl font-bold sm:my-8 sm:text-5xl">Hello</h1>
+    <section id="hero" class="pt-12 pb-8 sm:pt-16">
+      {/*
+        No heading here. The site name in the header is this page's h1, and the
+        48px "Welcome" that used to sit here spent the largest type on the page
+        on the least informative line. In its place: the highlighter — the
+        site's accent device — reduced to a single short stroke to open with.
+      */}
+      <p class="mark-rule mb-10" aria-hidden="true"></p>
 
       <!--
         Greg's bio, from the Obsidian staging folder (Website/bio.md).
         His wording and his paragraph breaks — keep them in sync with that file.
       -->
-      <p class="mt-4">
+      {/* The opening paragraph is set larger, so the page has an entry point
+          where the heading used to be. */}
+      <p class="text-[1.3rem] leading-[1.55]">
         I enjoy exploring: the world, myself, and what it means to live a full
         human life. I hope my time on Earth is of some benefit to others and the
         civilization we are building together.
       </p>
-      <p class="mt-4">
+
+      {/*
+        The photo sits after the lead rather than above it, so the page still
+        opens on type and the image lands where it means something: the
+        paragraph above is about exploring, and this is that.
+
+        Unlike the scenic photo that was here before, this is a close portrait,
+        and a face does not want to be a billboard: at the full 38rem column a
+        4:5 crop stands 760px tall and swallows the screen. So it is held to
+        24rem and centred — narrower than the measure, which costs nothing,
+        because the text runs above and below it rather than beside it. (That
+        is the reason not to *float* it, which would cut the measure to about
+        30 characters.)
+
+        No caption: a caption would be Greg's sentence to write, not mine.
+      */}
+      <Image
+        src={portrait}
+        alt="Greg outdoors, smiling at the camera in close-up, with a granite cliff face and conifers behind him."
+        widths={[384, 576, 768]}
+        sizes="(min-width: 26rem) 24rem, calc(100vw - 2rem)"
+        loading="eager"
+        class="border-border mx-auto mt-10 w-full max-w-96 border"
+      />
+      <p class="mt-10">
         Some stages of life: I went deep into speech and debate at Gig Harbor
         High School, studied computer science and philosophy at the University
         of Washington, spent eight years as a software engineer at Facebook
@@ -45,23 +74,13 @@ const homePath = getRelativeLocaleUrl(locale, "");
         Mental Health Counseling program training to be a psychotherapist. And,
         of course, working to make this website useful.
       </p>
-      <p class="mt-4">
+      <p class="mt-6">
         I currently live in beautiful Portland, Oregon, though I have a deep
         fondness for exploring the deserts of the American Southwest. I hope you
         find something of value here and I appreciate your visit to my humble
         internet home.
       </p>
 
-      {
-        socials.length > 0 && (
-          <div class="mt-6 flex max-sm:flex-col sm:items-center">
-            <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">
-              {t.home.socialLinks}:
-            </div>
-            <Socials />
-          </div>
-        )
-      }
     </section>
   </main>
   <Footer />
