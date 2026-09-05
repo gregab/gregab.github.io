@@ -11,8 +11,20 @@ import config from "@/config";
 <Layout title={`Curiosity Timeline | ${config.site.title}`}>
   <Header />
 
-  <Main pageTitle="Curiosity Timeline">
+  <Main
+    pageTitle="Curiosity Timeline"
+    pageDesc="A non-exhaustive list of books that reflect some of my curiosities at different points in my life. Inclusion in the list is neither agreement nor endorsement. Except for Gene Wolfe, in which case my highest recommendation is implicit."
+  >
     <CuriosityTimeline entries={CURIOSITY_TIMELINE} />
+
+    {/* Sits below the timeline's own bottom runway, so the fading arrow has
+        finished before this starts. Chrome face and a resting mark: it is the
+        only link here, with no list or sentence around it to say so. */}
+    <p class="font-ui mt-2 text-center text-sm">
+      <a href="/tools/curiosity-timeline.html" class="marked text-foreground">
+        Create your own curiosity timeline
+      </a>.
+    </p>
   </Main>
 
   <Footer />

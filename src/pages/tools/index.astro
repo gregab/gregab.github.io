@@ -34,6 +34,21 @@ const tools = getTools();
                 {tool.title}
               </a>
               {tool.description && <p class="mt-1.5">{tool.description}</p>}
+              {/* Every tool is one self-contained HTML file, so its source is
+                  a single link away. Factual label rather than a pitch — the
+                  words on this site are Greg's. */}
+              {tool.source && (
+                <p class="mt-1.5">
+                  <a
+                    href={tool.source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mark-hover font-ui text-muted-foreground text-sm"
+                  >
+                    Source on GitHub
+                  </a>
+                </p>
+              )}
             </li>
           ))}
         </ul>
