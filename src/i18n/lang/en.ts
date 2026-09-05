@@ -5,6 +5,7 @@ export default {
     home: "Home",
     writing: "Writing",
     tools: "Tools",
+    curiosity: "Curiosity",
     resources: "Resources",
     books: "Books",
     tags: "Tags",
