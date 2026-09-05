@@ -66,11 +66,10 @@ function tintFor(index: number, total: number): string {
       entries.map((entry, i) => {
         const meta = metaLine(entry);
         const needsCover = !entry.cover;
-        // The display key covers are cached under (stable regardless of a
-        // `lookup` override); the query fields are what actually gets sent
-        // to Open Library.
-        const queryTitle = entry.lookup ?? entry.title;
-        const queryAuthor = entry.lookup ? "" : (entry.author ?? "");
+        // The display key covers are cached under, stable regardless of a
+        // `lookup` override. The raw title/author/lookup ride along
+        // unmassaged: narrowing a byline into something Open Library can
+        // match is the resolver's job, in one place, not this template's.
         return (
           <li class="ct-item" style={`--ct-tint: ${tintFor(i, entries.length)}`}>
             <a
@@ -83,8 +82,9 @@ function tintFor(index: number, total: number): string {
                 class="ct-cover"
                 data-initial={initial(entry.title)}
                 data-cover-key={needsCover ? `${entry.title}|${entry.author ?? ""}` : undefined}
-                data-cover-query-title={needsCover ? queryTitle : undefined}
-                data-cover-query-author={needsCover ? queryAuthor : undefined}
+                data-cover-query-title={needsCover ? entry.title : undefined}
+                data-cover-query-author={needsCover ? (entry.author ?? "") : undefined}
+                data-cover-query-lookup={needsCover ? entry.lookup : undefined}
               >
                 {/* Always in the template, even with no src yet: Astro
                     scopes this stylesheet to [data-astro-cid-*], so an <img>
@@ -408,18 +408,34 @@ function tintFor(index: number, total: number): string {
 </style>
 
 <script>
-  // Runtime Open Library cover lookup. No network access at build time, so
-  // this fills in `entry.cover` when the data file leaves it blank. Every
-  // localStorage/fetch call is wrapped so a blocked or flaky network can
-  // never throw past this script — the drawn placeholder is always a safe
-  // landing.
-  //
-  // Baking real cover URLs into src/data/curiosity.ts (the
-  // /tools/curiosity-timeline generator emits them as JSON) removes this
-  // lookup entirely and is the better end state than depending on this at
-  // runtime forever.
-  const CACHE_PREFIX = "ct-cover:v1:";
-  const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  /*
+    Runtime Open Library cover lookup — the fallback, not the plan.
+
+    `npm run covers` resolves these offline and writes them into
+    src/data/curiosity.ts, and a baked-in `cover` skips this entirely. This
+    exists so an entry Greg adds without running the script still gets a cover
+    instead of a placeholder. The query ladder itself lives in
+    src/lib/openlibrary.mjs, shared with that script, because two copies of it
+    drifted once already.
+
+    Every localStorage/fetch call is wrapped: a blocked or flaky network can
+    never throw past this script, and the drawn placeholder is always a safe
+    landing.
+  */
+  import { findCover } from "@/lib/openlibrary.mjs";
+
+  /*
+    v2: v1 cached a miss for 30 days, so every book the old compound-byline
+    query failed on — six of them — would have kept its placeholder for a
+    month after the fix shipped. Bumping the prefix retires those entries.
+    Bump it again whenever a change should invalidate what visitors hold.
+  */
+  const CACHE_VERSION = "v2";
+  const CACHE_PREFIX = `ct-cover:${CACHE_VERSION}:`;
+  const HIT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  // Misses expire fast. A miss is usually "Open Library doesn't have it yet"
+  // or a query we can still improve, and neither should stick for a month.
+  const MISS_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
   const CONCURRENCY = 4;
 
   function readCache(key: string): { url: string; ts: number } | undefined {
@@ -447,31 +463,19 @@ function tintFor(index: number, total: number): string {
     }
   }
 
-  async function lookupCover(
-    title: string,
-    author: string
-  ): Promise<string> {
+  /** Drop entries left by an older cache version so they don't accumulate. */
+  function evictOldVersions(): void {
     try {
-      const params = new URLSearchParams({
-        title,
-        limit: "1",
-        fields: "cover_i",
-      });
-      if (author) params.set("author", author);
-      const res = await fetch(
-        `https://openlibrary.org/search.json?${params.toString()}`
-      );
-      if (!res.ok) return "";
-      const data = await res.json();
-      const coverId = data?.docs?.[0]?.cover_i;
-      return typeof coverId === "number"
-        ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
-        : "";
+      const stale: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("ct-cover:") && !key.startsWith(CACHE_PREFIX)) {
+          stale.push(key);
+        }
+      }
+      stale.forEach(key => localStorage.removeItem(key));
     } catch {
-      // Network error (or blocked, as in this sandbox) — treat as "no
-      // result this time" without caching, so it's retried on a later visit
-      // rather than being permanently written off.
-      return "__error__";
+      // Not worth caring about; these are a few hundred bytes.
     }
   }
 
@@ -486,20 +490,26 @@ function tintFor(index: number, total: number): string {
     let item: HTMLElement | undefined;
     while ((item = queue.shift())) {
       const key = item.dataset.coverKey;
-      const queryTitle = item.dataset.coverQueryTitle;
-      const queryAuthor = item.dataset.coverQueryAuthor ?? "";
-      if (!key || !queryTitle) continue;
+      const title = item.dataset.coverQueryTitle;
+      const author = item.dataset.coverQueryAuthor ?? "";
+      const lookup = item.dataset.coverQueryLookup;
+      if (!key || !title) continue;
 
       const cached = readCache(key);
-      if (cached && Date.now() - cached.ts < TTL_MS) {
-        if (cached.url) applyCover(item, cached.url);
-        continue;
+      if (cached) {
+        const ttl = cached.url ? HIT_TTL_MS : MISS_TTL_MS;
+        if (Date.now() - cached.ts < ttl) {
+          if (cached.url) applyCover(item, cached.url);
+          continue;
+        }
       }
 
-      const url = await lookupCover(queryTitle, queryAuthor);
-      if (url === "__error__") continue; // don't cache, retry later
-      writeCache(key, url);
-      if (url) applyCover(item, url);
+      const result = await findCover({ title, author, lookup });
+      // A transport failure is not evidence the book has no cover, so it is
+      // not written down — the next visit tries again.
+      if (!result.ok) continue;
+      writeCache(key, result.url);
+      if (result.url) applyCover(item, result.url);
     }
   }
 
@@ -508,6 +518,8 @@ function tintFor(index: number, total: number): string {
       ".ct-cover[data-cover-key]:not([data-ct-resolved])"
     );
     if (covers.length === 0) return;
+
+    evictOldVersions();
 
     const queue: HTMLElement[] = [];
     covers.forEach(cover => {

@@ -545,27 +545,84 @@
 
   function needsLookup(e) { return !e.author || !e.cover; }
 
-  function olQuery(title, author, byQOnly) {
-    var qs = byQOnly
-      ? 'q=' + encodeURIComponent(title)
-      : 'title=' + encodeURIComponent(title) + (author ? '&author=' + encodeURIComponent(author) : '');
-    var url = 'https://openlibrary.org/search.json?' + qs + '&limit=1&fields=title,author_name,cover_i';
+  /*
+    Narrow a display byline to one name Open Library can actually match.
+    "V. S. Ramachandran and Sandra Blakeslee" is nobody's name: the author
+    field is matched per author, so a conjoined byline matches no record and
+    the whole query comes back empty. Keep the first name only — every author
+    of a work is indexed, so one is enough.
+
+    This mirrors searchAuthor() in src/lib/openlibrary.mjs, which the site
+    itself uses. This file is deliberately self-contained and cannot import
+    it, so the two are kept in step by hand. Change one, change the other.
+  */
+  function searchAuthor(displayAuthor) {
+    if (!displayAuthor) return '';
+    return displayAuthor
+      .replace(/\([^)]*\)/g, ' ')
+      .split(/\s+and\s+|\s*&\s*|\s*,\s*|\s*;\s*|\s+with\s+|\s*\/\s*/i)[0]
+      .replace(/\bet\s+al\.?/i, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function olQuery(params) {
+    /*
+      Ask for a page of results rather than limit=1. Open Library's
+      top-ranked edition often has no cover scanned even when a later one
+      does, and taking docs[0] threw those away.
+    */
+    var url = 'https://openlibrary.org/search.json?' + params +
+      '&limit=10&fields=title,author_name,cover_i';
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
     return fetch(url, ctrl ? { signal: ctrl.signal } : {})
       .then(function (res) { return res.ok ? res.json() : null; })
-      .then(function (data) { return (data && data.docs && data.docs[0]) || null; })
-      .catch(function () { return null; })
-      .then(function (doc) { if (timer) clearTimeout(timer); return doc; });
+      .then(function (data) { return (data && data.docs) || []; })
+      .catch(function () { return []; })
+      .then(function (docs) { if (timer) clearTimeout(timer); return docs; });
+  }
+
+  /* Most specific query first, loosening on each miss. */
+  function olLadder(title, author) {
+    var enc = encodeURIComponent;
+    var steps = [];
+    if (author) steps.push('title=' + enc(title) + '&author=' + enc(author));
+    steps.push('title=' + enc(title));
+    steps.push('q=' + enc(author ? title + ' ' + author : title));
+
+    function rung(i) {
+      if (i >= steps.length) return Promise.resolve([]);
+      return olQuery(steps[i]).then(function (docs) {
+        // Keep climbing while nothing usable has come back.
+        var useful = docs.some(function (d) { return d && typeof d.cover_i === 'number'; });
+        if (useful || (docs.length && i === steps.length - 1)) return docs;
+        return rung(i + 1).then(function (next) { return next.length ? next : docs; });
+      });
+    }
+    return rung(0);
   }
 
   function lookupOne(e) {
-    return olQuery(e.title, e.author)
-      .then(function (doc) { return doc || olQuery(e.title, null, true); })
-      .then(function (doc) {
-        if (doc) {
-          if (!e.author && doc.author_name && doc.author_name[0]) e.author = doc.author_name[0];
-          if (!e.cover && doc.cover_i) e.cover = 'https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg';
+    var title = (e.title || '').trim();
+    if (!title) { e._status = 'notfound'; return Promise.resolve(); }
+
+    return olLadder(title, searchAuthor(e.author))
+      .then(function (docs) {
+        // The cover and the author can come from different docs: the
+        // best-matching record may have no scan, while a later edition does.
+        var withCover = null;
+        for (var i = 0; i < docs.length; i++) {
+          if (docs[i] && typeof docs[i].cover_i === 'number') { withCover = docs[i]; break; }
+        }
+        var named = docs[0];
+        if (!e.author && named && named.author_name && named.author_name[0]) {
+          e.author = named.author_name[0];
+        }
+        if (!e.cover && withCover) {
+          // default=false so a missing scan 404s instead of serving a blank
+          // 1x1 that would paint over the drawn placeholder.
+          e.cover = 'https://covers.openlibrary.org/b/id/' + withCover.cover_i + '-M.jpg?default=false';
         }
         e._status = (e.author && e.cover) ? '' : 'notfound';
       })

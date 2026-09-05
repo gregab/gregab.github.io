@@ -112,6 +112,20 @@ npm run build   # astro check && astro build && pagefind --site dist
   renumbering every file. The **`resources` skill**
   (`.claude/skills/resources/SKILL.md`) has the whole pipeline from a staged
   Obsidian note to a deployed page — read it before touching `/resources`.
+- **Curiosity timeline covers** come from Open Library. `npm run covers` resolves
+  them once, offline, and writes `cover:` URLs into `src/data/curiosity.ts`;
+  `-- --check` reports what's missing and `-- --force` re-resolves everything.
+  Run it after adding entries and commit the result — a baked URL is a static
+  image, while an unbaked one costs every visitor a round of API calls.
+  Anything it can't find takes a `lookup` (retry under a different title) or a
+  hand-pasted `cover`.
+  The query ladder lives in `src/lib/openlibrary.mjs`, shared by that script and
+  the page's runtime fallback. Note **the display byline is not a search term**:
+  Open Library matches authors individually, so "Gilles Deleuze and Félix
+  Guattari" matches nothing and gets narrowed to the first name before it is
+  sent. That bug cost six entries their covers. `public/tools/curiosity-timeline.html`
+  is a single self-contained file and so carries its own copy of the same
+  ladder — change one, change the other.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom

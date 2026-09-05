@@ -14,6 +14,7 @@
     "preview": "astro preview",
     "sync": "astro sync",
     "resources": "node scripts/resources.mjs",
+    "covers": "node scripts/covers.mjs",
     "astro": "astro"
   },
   "dependencies": {
