@@ -47,6 +47,12 @@
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 
+  /* Paint against the text box, not the padded box: on a link with vertical
+     padding (the nav items) the swipe otherwise lands in the padding, below
+     the word it is meant to mark. */
+  background-origin: content-box;
+  background-clip: content-box;
+
   @media (prefers-reduced-motion: no-preference) {
     transition: background-size 180ms ease;
   }
@@ -64,6 +70,8 @@
   background-size: 100% 0.95em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  background-origin: content-box;
+  background-clip: content-box;
 }
 
 :target {

@@ -28,13 +28,15 @@ const tools = getTools();
         <ul>
           {tools.map(tool => (
             <li class="my-6">
+              {/* Links take the highlighter, never the accent colour — the
+                  same treatment every other list on the site uses. */}
               <a
                 href={tool.href}
-                class="text-accent inline-block text-lg font-medium decoration-dashed underline-offset-4 hover:underline focus-visible:no-underline focus-visible:underline-offset-0"
+                class="marked text-foreground text-lg font-semibold focus-visible:no-underline"
               >
                 {tool.title}
               </a>
-              {tool.description && <p>{tool.description}</p>}
+              {tool.description && <p class="mt-1.5">{tool.description}</p>}
             </li>
           ))}
         </ul>
