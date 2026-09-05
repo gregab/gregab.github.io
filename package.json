@@ -13,6 +13,7 @@
     "build": "astro check && astro build && pagefind --site dist && cp -r dist/pagefind public/",
     "preview": "astro preview",
     "sync": "astro sync",
+    "resources": "node scripts/resources.mjs",
     "astro": "astro"
   },
   "dependencies": {

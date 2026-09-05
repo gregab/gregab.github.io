@@ -22,7 +22,7 @@ into the right place in `src/`, and deploy.
 | `bio.md`              | the bio section of `src/pages/index.astro` |
 | `Essays/*.md`         | `src/content/essays/`                |
 | `Books/*.md`          | `src/content/books/`                 |
-| `Resources/*.md`      | `src/content/resources/`             |
+| `Resources/*.md`      | `src/content/resources/` — use the `resources` skill |
 | `Notes for Claude.md` | context and todos — never published  |
 
 Greg writes prose only. Frontmatter, filenames, slugs and dates are yours to
@@ -105,6 +105,12 @@ npm run build   # astro check && astro build && pagefind --site dist
   - Renaming a tool leaves a redirect stub at the old filename so existing links
     survive. `tools.ts` skips any file containing an `http-equiv="refresh"`, so
     stubs don't appear as extra tools.
+- **Resources** are never hand-edited. `npm run resources -- <cmd>` (see
+  `scripts/resources.mjs`) owns slugs, `order` numbers and file layout; it keeps
+  `order` at 1..N in render order so re-arranging is one command instead of
+  renumbering every file. The **`resources` skill**
+  (`.claude/skills/resources/SKILL.md`) has the whole pipeline from a staged
+  Obsidian note to a deployed page — read it before touching `/resources`.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom

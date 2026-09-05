@@ -27,13 +27,37 @@ regenerated on every build) so static search works in production.
 | Essays (`/writing`)            | `src/content/essays/*.md`      | AstroPaper's post schema: `title`, `description`, `pubDatetime`, optional `modDatetime`, `tags`, `ogImage`, `featured`. Set `draft: true` to keep a post out of the published list. |
 | Newsletter block (`/writing`)  | `src/data/substack.ts`         | A plain hand-edited array — **not** fetched from Substack automatically. Add new posts here by hand. |
 | Tools (`/tools`)               | `public/tools/*.html`          | See below. |
-| Resources (`/resources`)       | `src/content/resources/*.md`   | `title`, `url`, `category`, `note` (one line), optional `added`. Grouped by `category` on the page. |
+| Resources (`/resources`)       | `src/content/resources/*.md`   | One file per link, grouped **category > person** on the page. Managed with `npm run resources` rather than by hand — see below. |
 | Books (`/books`)               | `src/content/books/*.md`       | `title`, `author`, `rating` (1–5), `dateRead`, optional `coverImage`. Body is the review text. |
 | About (`/about`)               | `src/content/pages/about.md`   | Currently a placeholder. |
 
 Content collections are defined with Zod schemas in `src/content.config.ts`
 — a bad or missing frontmatter field fails the build loudly instead of
 silently shipping a broken page.
+
+## Adding a resource
+
+`/resources` is a list of outbound links nested category > person. Each link is
+one file in `src/content/resources/`, and a single `order` field drives the
+whole arrangement: a category and a person each inherit the lowest `order`
+beneath them.
+
+Those files are managed by a small zero-dependency CLI rather than edited by
+hand, so slugs, `order` numbers and renumbering stay consistent:
+
+```bash
+npm run resources -- help     # command reference
+npm run resources -- list     # the page's running order, with slugs
+npm run resources -- add entries.json
+npm run resources -- move "Jon Frederickson" --before "Jonathan Shedler"
+npm run resources -- set shedler-substack duration="52 min"
+npm run resources -- rm <slug>
+npm run resources -- check    # duplicate links, people missing a profile link
+```
+
+Every mutating command renumbers the list to 1..N in render order and rewrites
+only the files that actually changed. Person names link to their own sites via
+`src/data/people.ts`.
 
 ## Adding a new tool
 
