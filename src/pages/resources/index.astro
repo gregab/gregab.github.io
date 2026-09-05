@@ -1,7 +1,6 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
-import Breadcrumb from "@/components/Breadcrumb.astro";
 import Main from "@/components/Main.astro";
 import Footer from "@/components/Footer.astro";
 import ResourceLink from "@/components/ResourceLink.astro";
@@ -21,8 +20,6 @@ const PersonHeading = showCategories ? "h3" : "h2";
 <Layout title={`Resources | ${config.site.title}`}>
   <Header />
 
-  <Breadcrumb />
-
   <Main
     pageTitle="Resources"
     pageDesc="A growing list of things I have found interesting and helpful"
@@ -34,7 +31,7 @@ const PersonHeading = showCategories ? "h3" : "h2";
         </p>
       ) : (
         categories.map(category => (
-          <section class="mb-16 last:mb-4">
+          <section class="mb-14 last:mb-0">
             {showCategories && (
               <h2
                 id={category.id}
@@ -45,9 +42,9 @@ const PersonHeading = showCategories ? "h3" : "h2";
             )}
 
             {category.groups.map(group => (
-              <div class="mb-14 last:mb-0">
+              <div class="mb-12 last:mb-0">
                 {group.name && (
-                  <PersonHeading class="text-xl font-semibold">
+                  <PersonHeading class="text-[1.375rem] font-semibold">
                     {/* The name is the way in to everything else they have
                         made, so it points at their own site when we know it. */}
                     {group.url ? (
@@ -55,7 +52,7 @@ const PersonHeading = showCategories ? "h3" : "h2";
                         href={group.url}
                         target="_blank"
                         rel="noreferrer"
-                        class="marked text-foreground focus-visible:no-underline"
+                        class="mark-hover text-foreground focus-visible:no-underline"
                       >
                         {group.name}
                       </a>

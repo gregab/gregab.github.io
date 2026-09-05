@@ -35,7 +35,7 @@
   --accent-foreground: #fffdfa;
   --muted: #ebe3d8;
   --muted-foreground: #736659;
-  --border: #e4dbd0;
+  --border: #d8ccbc;
   --mark: 244 200 106;
   --mark-alpha: 0.5;
 }
@@ -50,7 +50,7 @@
   --accent-foreground: #1e1a18;
   --muted: #352e2a;
   --muted-foreground: #a89a8d;
-  --border: #3a322c;
-  --mark: 214 165 74;
-  --mark-alpha: 0.4;
+  --border: #4a4038;
+  --mark: 233 186 96;
+  --mark-alpha: 0.34;
 }

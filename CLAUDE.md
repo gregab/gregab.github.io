@@ -128,6 +128,28 @@ npm run build   # astro check && astro build && pagefind --site dist
   is the same mark held open. Apply `marked` to *text* links only — it looks
   like a stray underline under icon-only links, which is why `LinkButton`
   does not apply it by default.
+- **The mark is rationed.** `marked` (visible at rest) is for links inside
+  prose, where it's the only thing telling you a phrase mid-sentence is
+  clickable, and for the current nav item. Every link in a *list* uses
+  `mark-hover` instead — bare ink at rest, mark on hover. In a list of links
+  "this is a link" is already obvious, so a resting mark on each one is
+  decoration, and a page of them reads as stripes. All three paint against the
+  content box, not the padded box; anchoring to the padded box put the swipe
+  below the word on anything with vertical padding.
+- **The measure is the point.** 40rem column, 18px body, 1.65 leading — about
+  68 characters a line. Newsreader has a small x-height and reads a size
+  smaller than it measures, so 16px in the old 48rem column ran to 91
+  characters. Don't widen `max-w-app` or shrink the body without recounting.
+- **The type scale is 30 / 22 / 20 / 18 / 14px** (page title, person or section
+  heading, list title, body, meta). Note 18px body is exactly Tailwind's
+  `text-lg`, so `text-lg` no longer reads as "large" — list titles need
+  `text-xl` or above to keep their step.
+- **Page subtitles are chrome, not prose** — Plex Sans, muted, roman. Italic
+  serif at body size read as a pull-quote.
+- **The homepage has no heading.** The site name in the header is its `<h1>`;
+  the page opens on a short amber stroke (`mark-rule`, the highlighter reduced
+  to a single mark) and a lead paragraph. The 48px "Welcome" that used to sit
+  there spent the largest type on the page on the least informative line.
 - **No filled buttons anywhere.** Bordered or text-only.
 - **Fonts:** Newsreader for headings and body (one family, so the page has one
   voice), IBM Plex Sans for chrome only, IBM Plex Mono for code and tools.

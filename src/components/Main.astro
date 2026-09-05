@@ -19,14 +19,22 @@ const backUrl = config.features.showBackButton
 <main
   data-backUrl={backUrl}
   id="main-content"
-  class:list={["app-layout pb-4", className]}
+  class:list={["app-layout pt-10 pb-4", className]}
 >
   <h1
-    class:list={["text-2xl font-semibold sm:text-3xl", { "mb-6": !pageDesc }]}
+    class:list={["text-3xl font-semibold", { "mb-10": !pageDesc }]}
   >
     {pageTitle}
   </h1>
-  {pageDesc && <p class="mt-2 mb-6 italic">{pageDesc}</p>}
+  {/* A subtitle is chrome, not prose — so it takes the chrome face rather
+      than italic serif, which read as a pull-quote. */}
+  {
+    pageDesc && (
+      <p class="font-ui text-muted-foreground mt-2.5 mb-10 text-[0.95rem]">
+        {pageDesc}
+      </p>
+    )
+  }
   <slot />
 </main>
 

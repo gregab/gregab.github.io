@@ -9,6 +9,15 @@
   html {
     font-optical-sizing: auto;
   }
+  /*
+    18px, not 16: Newsreader has a small x-height and reads a size smaller than
+    it measures. 1.65 leading because a serif at this measure wants more air
+    than the 1.5 a UI font is tuned for.
+  */
+  body {
+    font-size: 1.125rem;
+    line-height: 1.65;
+  }
   * {
     @apply border-border outline-accent/75;
     scrollbar-width: auto;
@@ -25,8 +34,14 @@
   }
 }
 
+/*
+  The measure. 40rem at the 18px body below lands body copy around 68
+  characters a line; the old 48rem at 16px ran to 91, which is well past the
+  60-75 a reader is comfortable in. Header and footer share it so the page has
+  one column, not a wide frame around a narrow text.
+*/
 @utility max-w-app {
-  @apply max-w-3xl;
+  @apply max-w-[40rem];
 }
 
 @utility app-layout {
@@ -60,6 +75,44 @@
   &:hover {
     background-size: 100% 0.95em;
   }
+}
+
+/*
+  The same swipe, but only on hover. In a list of links, "this is a link" is
+  already obvious from the context, so a resting mark on every title is
+  decoration rather than information — and a page of them reads as stripes.
+  Prose links keep `marked`, where the mark genuinely tells you a phrase
+  mid-sentence is clickable.
+*/
+@utility mark-hover {
+  background-image: linear-gradient(rgb(var(--mark) / var(--mark-alpha)) 0 100%);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  background-origin: content-box;
+  background-clip: content-box;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-size 180ms ease;
+  }
+
+  &:hover {
+    background-size: 100% 0.95em;
+  }
+}
+
+/*
+  The opening mark on the homepage: the highlighter reduced to a single short
+  stroke, standing in for the heading that used to sit there. A real box rather
+  than a background band, so its height is its height and nothing clips it.
+*/
+@utility mark-rule {
+  display: block;
+  width: 4rem;
+  height: 0.45rem;
+  background-color: rgb(var(--mark) / var(--mark-alpha));
 }
 
 /* The current page is marked as if someone had run a highlighter over it. */
