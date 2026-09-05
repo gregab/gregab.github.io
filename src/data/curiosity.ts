@@ -247,9 +247,8 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
     series: true,
   },
   {
-    title: "The Book of the Short Sun",
-    author: "Gene Wolfe",
-    url: "https://www.goodreads.com/series/40848-the-book-of-the-short-sun",
-    series: true,
+    title: "Already Free",
+    author: "Bruce Tift",
+    url: "https://www.goodreads.com/book/show/12400671-already-free",
   },
 ];
