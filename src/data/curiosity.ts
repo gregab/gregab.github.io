@@ -61,7 +61,7 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "Freedom Evolves",
     author: "Daniel C. Dennett",
-    url: "https://www.goodreads.com/book/show/2069.Freedom_Evolves",
+    url: "https://www.goodreads.com/book/show/2071.Freedom_Evolves",
   },
   {
     title: "The Inner Game of Tennis",
@@ -71,7 +71,7 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "The Singularity Is Near",
     author: "Ray Kurzweil",
-    url: "https://www.goodreads.com/book/show/83538.The_Singularity_is_Near",
+    url: "https://www.goodreads.com/book/show/83518.The_Singularity_is_Near",
   },
   {
     title: "What the Buddha Taught",
@@ -91,7 +91,7 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "The Journals of Henry David Thoreau",
     author: "Henry David Thoreau",
-    url: "https://www.goodreads.com/book/show/630538.The_Journals_of_Henry_David_Thoreau",
+    url: "https://www.goodreads.com/book/show/5984293-the-journal-1837-1861",
   },
   {
     title: "True Hallucinations",
@@ -103,17 +103,15 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
     author: "V. S. Ramachandran and Sandra Blakeslee",
     url: "https://www.goodreads.com/book/show/31555.Phantoms_in_the_Brain",
   },
-  // Goodreads 13944 is titled just "Ethics" — Greg to confirm the edition.
   {
     title: "Ethics",
     author: "Baruch Spinoza",
-    url: "https://www.goodreads.com/book/show/13944.Ethics",
+    url: "https://www.goodreads.com/book/show/205218.Ethics",
   },
-  // And 37517 is "Spinoza's Ethics" — a companion volume; author unconfirmed,
-  // so the meta line carries the title alone rather than a guess.
   {
-    title: "Spinoza's Ethics",
-    url: "https://www.goodreads.com/book/show/37517.Spinoza_s_Ethics_",
+    title: "Spinoza's Ethics: An Introduction",
+    author: "Steven Nadler",
+    url: "https://www.goodreads.com/book/show/37517.Spinoza_s_ethics_",
   },
   {
     title: "Starting Strength",
@@ -123,12 +121,12 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "A Thousand Plateaus",
     author: "Gilles Deleuze and Félix Guattari",
-    url: "https://www.goodreads.com/book/show/118317.A_Thousand_Plateaus",
+    url: "https://www.goodreads.com/book/show/118316.A_Thousand_Plateaus",
   },
   {
     title: "The Invisibles",
     author: "Grant Morrison",
-    url: "https://www.goodreads.com/series/62657-the-invisibles-collected-editions",
+    url: "https://www.goodreads.com/series/59889-the-invisibles",
     series: true,
   },
   {
@@ -137,9 +135,9 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
     url: "https://www.goodreads.com/book/show/24113.G_del_Escher_Bach",
   },
   {
-    title: "Saga of the Swamp Thing, Book 1",
+    title: "Saga of the Swamp Thing, Book One",
     author: "Alan Moore",
-    url: "https://www.goodreads.com/book/show/102105.Saga_of_the_Swamp_Thing_Book_1",
+    url: "https://www.goodreads.com/book/show/44195369-saga-of-the-swamp-thing-book-1",
   },
   {
     title: "Anathem",
@@ -154,12 +152,12 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "Functional JavaScript",
     author: "Michael Fogus",
-    url: "https://www.goodreads.com/book/show/17392694-functional-javascript",
+    url: "https://www.goodreads.com/book/show/17623632-functional-javascript",
   },
   {
     title: "The Little Schemer",
     author: "Daniel P. Friedman and Matthias Felleisen",
-    url: "https://www.goodreads.com/book/show/40389.The_Little_Schemer",
+    url: "https://www.goodreads.com/book/show/548914.The_Little_Schemer",
   },
   {
     title: "A Wizard of Earthsea",
@@ -169,7 +167,7 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "Reasons and Persons",
     author: "Derek Parfit",
-    url: "https://www.goodreads.com/book/show/272213.Reasons_and_Persons",
+    url: "https://www.goodreads.com/book/show/327051.Reasons_and_Persons",
   },
   {
     title: "The Mind Illuminated",
@@ -199,7 +197,7 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "Emptiness Dancing",
     author: "Adyashanti",
-    url: "https://www.goodreads.com/book/show/386029.Emptiness_Dancing",
+    url: "https://www.goodreads.com/book/show/190055.Emptiness_Dancing",
   },
   {
     title: "A Fire Upon the Deep",
@@ -209,12 +207,11 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "A Path with Heart",
     author: "Jack Kornfield",
-    url: "https://www.goodreads.com/book/show/143663.A_Path_with_Heart",
+    url: "https://www.goodreads.com/book/show/143675.A_Path_with_Heart",
   },
-  // Goodreads 58045165 — Greg to confirm; read as Angelo Dilullo's "Awake".
   {
     title: "Awake",
-    author: "Angelo Dilullo",
+    author: "Angelo DiLullo",
     url: "https://www.goodreads.com/book/show/58045165-awake",
   },
   {
@@ -241,13 +238,13 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
   {
     title: "The Book of the Long Sun",
     author: "Gene Wolfe",
-    url: "https://www.goodreads.com/series/40413-the-book-of-the-long-sun",
+    url: "https://www.goodreads.com/series/43253-the-book-of-the-long-sun",
     series: true,
   },
   {
     title: "The Book of the Short Sun",
     author: "Gene Wolfe",
-    url: "https://www.goodreads.com/series/40540-the-book-of-the-short-sun",
+    url: "https://www.goodreads.com/series/40848-the-book-of-the-short-sun",
     series: true,
   },
 ];

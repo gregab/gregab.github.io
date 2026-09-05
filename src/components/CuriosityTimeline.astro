@@ -26,8 +26,11 @@ function metaLine(entry: CuriosityEntry): string {
   return parts.join(" · ");
 }
 
+// A leading article would make half the placeholders read "T".
 function initial(title: string): string {
-  return title.trim().charAt(0).toUpperCase() || "?";
+  const trimmed = title.trim();
+  const withoutArticle = trimmed.replace(/^(the|an|a)\s+/i, "");
+  return (withoutArticle.charAt(0) || trimmed.charAt(0) || "?").toUpperCase();
 }
 ---
 
@@ -57,16 +60,20 @@ function initial(title: string): string {
                 data-cover-query-title={needsCover ? queryTitle : undefined}
                 data-cover-query-author={needsCover ? queryAuthor : undefined}
               >
-                {entry.cover && (
-                  <img
-                    src={entry.cover}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    width="48"
-                    height="72"
-                  />
-                )}
+                {/* Always in the template, even with no src yet: Astro
+                    scopes this stylesheet to [data-astro-cid-*], so an <img>
+                    created in the client script would match none of the
+                    cover styles and paint behind the placeholder. The script
+                    sets .src on this element instead. An <img> with no src
+                    attribute requests nothing and renders nothing. */}
+                <img
+                  src={entry.cover || undefined}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width="48"
+                  height="72"
+                />
               </span>
               <span class="ct-text">
                 <span class="ct-title mark-hover text-foreground text-xl font-semibold">
@@ -90,7 +97,9 @@ function initial(title: string): string {
   .ct {
     --ct-gutter: 2.5rem; /* width of the channel between card edge and spine */
     --ct-spine: 50%; /* where the spine sits inside .ct-list */
-    --ct-conn: var(--ct-gutter); /* connector length */
+    /* The connector spans card edge → spine, which is half the gutter
+       column: the gutter is centred on the spine, not beside it. */
+    --ct-conn: calc(var(--ct-gutter) / 2);
     --ct-cover: 3rem; /* cover width; height follows 2:3 */
     max-width: 44rem;
     margin: 0 auto;
@@ -142,7 +151,7 @@ function initial(title: string): string {
     border: 1px solid var(--border);
     background: var(--background);
   }
-  .ct-item:hover::before,
+  .ct-item:has(> .ct-card:hover)::before,
   .ct-item:focus-within::before {
     background: rgb(var(--mark) / var(--mark-alpha));
     border-color: rgb(var(--mark) / var(--mark-alpha));
@@ -342,15 +351,10 @@ function initial(title: string): string {
   }
 
   function applyCover(cover: HTMLElement, url: string): void {
-    const img = document.createElement("img");
+    const img = cover.querySelector("img");
+    if (!img) return;
+    img.onerror = () => img.removeAttribute("src");
     img.src = url;
-    img.alt = "";
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.width = 48;
-    img.height = 72;
-    img.onerror = () => img.remove();
-    cover.appendChild(img);
   }
 
   async function worker(queue: HTMLElement[]): Promise<void> {

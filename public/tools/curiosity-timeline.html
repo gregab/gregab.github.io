@@ -431,6 +431,12 @@
 
   // ---------- table ----------
 
+  // A leading article would make half the placeholders read "T".
+  function coverInitial(title) {
+    var t = String(title).trim().replace(/^(the|an|a)\s+/i, '');
+    return (t.charAt(0) || String(title).trim().charAt(0) || '?').toUpperCase();
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -637,7 +643,7 @@
     L.push('  --ct-mark:  color-mix(in srgb, var(--ct-accent) 48%, transparent);');
     L.push('  --ct-gutter: 2.5rem;');
     L.push('  --ct-spine: 50%;');
-    L.push('  --ct-conn: var(--ct-gutter);');
+    L.push('  --ct-conn: calc(var(--ct-gutter) / 2);');
     L.push('  --ct-cover: 3rem;');
     L.push('  max-width: 44rem;');
     L.push('  margin: 0 auto;');
@@ -667,7 +673,7 @@
     L.push('  border-radius: 50%; border: 1px solid var(--ct-rule);');
     L.push('  background: #fff; background: Canvas;');
     L.push('}');
-    L.push('.ct-item:hover::before, .ct-item:focus-within::before {');
+    L.push('.ct-item:has(> .ct-card:hover)::before, .ct-item:focus-within::before {');
     L.push('  background: var(--ct-accent); border-color: var(--ct-accent);');
     L.push('}');
     L.push('');
@@ -752,7 +758,7 @@
     L.push('  <ol class="ct-list">');
     entries.forEach(function (e) {
       var title = e.title || 'Untitled';
-      var initial = esc((title.trim().charAt(0) || '?').toUpperCase());
+      var initial = esc(coverInitial(title));
       L.push('    <li class="ct-item">');
       var attrs = 'class="ct-card" href="' + esc(e.url) + '"' + (o.newTab ? ' target="_blank" rel="noopener noreferrer"' : '');
       L.push('      <a ' + attrs + '>');
