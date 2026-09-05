@@ -8,6 +8,7 @@ export default defineAstroPaperConfig({
       "Personal site of Greg Bigelow — exploring the world, myself, and what it means to live a full human life.",
     author: "Greg Bigelow",
     timezone: "America/New_York",
+    repo: "https://github.com/gregab/gregab.github.io",
   },
   posts: {
     perPage: 4,
@@ -28,6 +29,7 @@ export default defineAstroPaperConfig({
     // Cloudflare Email Routing alias on this domain, forwarding to Greg's
     // inbox. Never put a personal address here.
     { name: "mail", url: "mailto:hello@gregbigelow.com" },
+    { name: "github", url: "https://github.com/gregab" },
   ],
   shareLinks: [
     { name: "whatsapp", url: "https://wa.me/?text=" },

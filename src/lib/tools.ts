@@ -7,12 +7,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import config from "@/config";
 
 export interface ToolEntry {
   file: string;
   title: string;
   description: string;
   href: string;
+  /**
+   * The tool's own source file on GitHub. Every tool is one self-contained
+   * HTML file, so this is derivable from the filename — no manifest, same as
+   * the rest of this module. Absent when `site.repo` is unset.
+   */
+  source: string | null;
 }
 
 /*
@@ -64,7 +71,14 @@ export function getTools(): ToolEntry[] {
 
     const title = extractTitle(html) || titleCaseFromFilename(file);
     const description = extractDescription(html) || "";
-    return { file, title, description, href: `/tools/${file}` };
+    const repo = config.site.repo?.replace(/\/+$/, "");
+    return {
+      file,
+      title,
+      description,
+      href: `/tools/${file}`,
+      source: repo ? `${repo}/blob/main/public/tools/${file}` : null,
+    };
   });
 
   tools.sort((a, b) => a.title.localeCompare(b.title));

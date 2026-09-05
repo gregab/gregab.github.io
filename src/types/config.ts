@@ -9,6 +9,12 @@ interface SiteConfig {
   author: string;
   /** Author profile URL (used in structured data) */
   profile?: string;
+  /**
+   * Public repository this site is built from, e.g.
+   * "https://github.com/user/repo". Used to link a tool's source from
+   * /tools; omit and those links are simply left out.
+   */
+  repo?: string;
   /** Fallback OG image filename in /public, e.g. "og.jpg" */
   ogImage?: string;
   /** HTML lang attribute, defaults to "en" */
@@ -115,7 +121,7 @@ type ResolvedSiteConfig = Required<
     | "ogImage"
   >
 > &
-  Pick<SiteConfig, "profile" | "googleVerification">;
+  Pick<SiteConfig, "profile" | "repo" | "googleVerification">;
 
 export interface ResolvedAstroPaperConfig {
   site: ResolvedSiteConfig;
