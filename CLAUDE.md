@@ -161,3 +161,11 @@ so and switch rather than muddling through.
   proxying breaks GitHub's cert issuance).
 - Greg does not want to review diffs before they land. Commit and push completed
   work directly; don't ask for approval on ordinary changes.
+- **Finish the job by deploying.** Ordinary work is not done sitting on a
+  branch — merge it to `main` and push, which is what deploys. Do that by
+  default, without being asked, once the work is complete and `npm run build`
+  passes (or the only failure is environmental, like a sandbox blocking the
+  font fetch — say so if you couldn't build).
+  Stop and ask first only when merging is genuinely not safe: the build is
+  broken, the change touches something Greg is mid-conversation about, or it
+  publishes content he hasn't named (see the staging-folder rules above).
