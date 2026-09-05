@@ -1,0 +1,394 @@
+---
+/*
+  A vertical timeline of books, alternating left/right of a hairline spine.
+  Geometry is canonical — see TIMELINE-SPEC.md (shared with the standalone
+  /tools/curiosity-timeline generator) — colours come from the site's theme
+  tokens instead of the embed version's color-mix(currentColor) formulas.
+
+  Cover images: `entry.cover`, when set, is used as-is. Otherwise a small
+  client script below looks one up from Open Library at runtime (there is no
+  network access at build time). Pasting real cover URLs into
+  src/data/curiosity.ts — the /tools/curiosity-timeline generator emits them
+  as JSON — removes this lookup entirely, which is the better end state.
+*/
+import type { CuriosityEntry } from "@/data/curiosity";
+
+type Props = {
+  entries: CuriosityEntry[];
+};
+
+const { entries } = Astro.props;
+
+function metaLine(entry: CuriosityEntry): string {
+  const parts: string[] = [];
+  if (entry.author) parts.push(entry.author);
+  if (entry.series) parts.push("Series");
+  return parts.join(" · ");
+}
+
+function initial(title: string): string {
+  return title.trim().charAt(0).toUpperCase() || "?";
+}
+---
+
+<div class="ct">
+  <ol class="ct-list">
+    {
+      entries.map(entry => {
+        const meta = metaLine(entry);
+        const needsCover = !entry.cover;
+        // The display key covers are cached under (stable regardless of a
+        // `lookup` override); the query fields are what actually gets sent
+        // to Open Library.
+        const queryTitle = entry.lookup ?? entry.title;
+        const queryAuthor = entry.lookup ? "" : (entry.author ?? "");
+        return (
+          <li class="ct-item">
+            <a
+              class="ct-card"
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span
+                class="ct-cover"
+                data-initial={initial(entry.title)}
+                data-cover-key={needsCover ? `${entry.title}|${entry.author ?? ""}` : undefined}
+                data-cover-query-title={needsCover ? queryTitle : undefined}
+                data-cover-query-author={needsCover ? queryAuthor : undefined}
+              >
+                {entry.cover && (
+                  <img
+                    src={entry.cover}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    width="48"
+                    height="72"
+                  />
+                )}
+              </span>
+              <span class="ct-text">
+                <span class="ct-title mark-hover text-foreground text-xl font-semibold">
+                  {entry.title}
+                </span>
+                {meta && (
+                  <span class="ct-meta font-ui text-muted-foreground text-sm">
+                    {meta}
+                  </span>
+                )}
+              </span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+</div>
+
+<style>
+  .ct {
+    --ct-gutter: 2.5rem; /* width of the channel between card edge and spine */
+    --ct-spine: 50%; /* where the spine sits inside .ct-list */
+    --ct-conn: var(--ct-gutter); /* connector length */
+    --ct-cover: 3rem; /* cover width; height follows 2:3 */
+    max-width: 44rem;
+    margin: 0 auto;
+  }
+  .ct,
+  .ct *,
+  .ct *::before,
+  .ct *::after {
+    box-sizing: border-box;
+  }
+
+  .ct-list {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ct-list::before {
+    /* the spine */
+    content: "";
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    left: var(--ct-spine);
+    width: 1px;
+    margin-left: -0.5px;
+    background: var(--border);
+  }
+
+  .ct-item {
+    position: relative;
+    display: grid;
+    align-items: start;
+    grid-template-columns: 1fr var(--ct-gutter) 1fr;
+  }
+  .ct-item + .ct-item {
+    margin-top: 1.5rem;
+  }
+  .ct-item::before {
+    /* the node — punches a hole in the spine at rest */
+    content: "";
+    position: absolute;
+    left: var(--ct-spine);
+    top: 0.95rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: -0.25rem 0 0 -0.25rem;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--background);
+  }
+  .ct-item:hover::before,
+  .ct-item:focus-within::before {
+    background: rgb(var(--mark) / var(--mark-alpha));
+    border-color: rgb(var(--mark) / var(--mark-alpha));
+  }
+
+  .ct-card {
+    /* odd items: left of the spine */
+    position: relative;
+    grid-column: 1;
+    justify-self: end;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 0.8rem;
+    align-items: flex-start;
+    max-width: 19rem;
+    text-align: right;
+    text-decoration: none;
+    color: inherit;
+  }
+  .ct-item:nth-child(even) > .ct-card {
+    /* even items: right of the spine */
+    grid-column: 3;
+    justify-self: start;
+    flex-direction: row;
+    text-align: left;
+  }
+  .ct-card::after {
+    /* connector, card edge → node */
+    content: "";
+    position: absolute;
+    top: 0.95rem;
+    height: 1px;
+    width: var(--ct-conn);
+    right: calc(-1 * var(--ct-conn));
+    background: var(--border);
+  }
+  .ct-item:nth-child(even) > .ct-card::after {
+    right: auto;
+    left: calc(-1 * var(--ct-conn));
+  }
+
+  .ct-cover {
+    position: relative;
+    flex: none;
+    width: var(--ct-cover);
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    background: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .ct-cover::before {
+    /* the placeholder's centred initial */
+    content: attr(data-initial);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--muted-foreground);
+  }
+  .ct-cover::after {
+    /* placeholder "book spine" strip */
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: rgb(var(--mark) / var(--mark-alpha));
+  }
+  .ct-cover img {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ct-text {
+    min-width: 0;
+    padding-top: 0.1rem;
+  }
+  .ct-title {
+    display: inline;
+    line-height: 1.35;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  /* mark-hover only lights up on hovering/focusing the title span itself;
+     the whole card is the link, so extend the same trigger to the card. The
+     extra .mark-hover in the selector keeps this ahead of the utility's own
+     specificity regardless of stylesheet order. */
+  .ct-card:hover .ct-title.mark-hover,
+  .ct-card:focus-visible .ct-title.mark-hover {
+    background-size: 100% 0.95em;
+  }
+  .ct-meta {
+    display: block;
+    margin-top: 0.2rem;
+  }
+
+  /* Single column at phone widths: spine on the left, every card to its
+     right. */
+  @media (max-width: 40rem) {
+    .ct {
+      --ct-gutter: 1.5rem;
+      --ct-spine: 0.3rem;
+      --ct-conn: calc(var(--ct-gutter) - var(--ct-spine));
+    }
+    .ct-item {
+      grid-template-columns: 0 var(--ct-gutter) 1fr;
+    }
+    .ct-card,
+    .ct-item:nth-child(even) > .ct-card {
+      grid-column: 3;
+      justify-self: start;
+      flex-direction: row;
+      text-align: left;
+      max-width: none;
+    }
+    .ct-card::after,
+    .ct-item:nth-child(even) > .ct-card::after {
+      left: calc(-1 * var(--ct-conn));
+      right: auto;
+    }
+  }
+</style>
+
+<script>
+  // Runtime Open Library cover lookup. No network access at build time, so
+  // this fills in `entry.cover` when the data file leaves it blank. Every
+  // localStorage/fetch call is wrapped so a blocked or flaky network can
+  // never throw past this script — the drawn placeholder is always a safe
+  // landing.
+  //
+  // Baking real cover URLs into src/data/curiosity.ts (the
+  // /tools/curiosity-timeline generator emits them as JSON) removes this
+  // lookup entirely and is the better end state than depending on this at
+  // runtime forever.
+  const CACHE_PREFIX = "ct-cover:v1:";
+  const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const CONCURRENCY = 4;
+
+  function readCache(key: string): { url: string; ts: number } | undefined {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + key);
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.ts !== "number" || typeof parsed?.url !== "string") {
+        return undefined;
+      }
+      return parsed;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function writeCache(key: string, url: string): void {
+    try {
+      localStorage.setItem(
+        CACHE_PREFIX + key,
+        JSON.stringify({ url, ts: Date.now() })
+      );
+    } catch {
+      // Storage unavailable or full — just skip caching this result.
+    }
+  }
+
+  async function lookupCover(
+    title: string,
+    author: string
+  ): Promise<string> {
+    try {
+      const params = new URLSearchParams({
+        title,
+        limit: "1",
+        fields: "cover_i",
+      });
+      if (author) params.set("author", author);
+      const res = await fetch(
+        `https://openlibrary.org/search.json?${params.toString()}`
+      );
+      if (!res.ok) return "";
+      const data = await res.json();
+      const coverId = data?.docs?.[0]?.cover_i;
+      return typeof coverId === "number"
+        ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+        : "";
+    } catch {
+      // Network error (or blocked, as in this sandbox) — treat as "no
+      // result this time" without caching, so it's retried on a later visit
+      // rather than being permanently written off.
+      return "__error__";
+    }
+  }
+
+  function applyCover(cover: HTMLElement, url: string): void {
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.width = 48;
+    img.height = 72;
+    img.onerror = () => img.remove();
+    cover.appendChild(img);
+  }
+
+  async function worker(queue: HTMLElement[]): Promise<void> {
+    let item: HTMLElement | undefined;
+    while ((item = queue.shift())) {
+      const key = item.dataset.coverKey;
+      const queryTitle = item.dataset.coverQueryTitle;
+      const queryAuthor = item.dataset.coverQueryAuthor ?? "";
+      if (!key || !queryTitle) continue;
+
+      const cached = readCache(key);
+      if (cached && Date.now() - cached.ts < TTL_MS) {
+        if (cached.url) applyCover(item, cached.url);
+        continue;
+      }
+
+      const url = await lookupCover(queryTitle, queryAuthor);
+      if (url === "__error__") continue; // don't cache, retry later
+      writeCache(key, url);
+      if (url) applyCover(item, url);
+    }
+  }
+
+  function resolveCovers(): void {
+    const covers = document.querySelectorAll<HTMLElement>(
+      ".ct-cover[data-cover-key]:not([data-ct-resolved])"
+    );
+    if (covers.length === 0) return;
+
+    const queue: HTMLElement[] = [];
+    covers.forEach(cover => {
+      cover.dataset.ctResolved = "1";
+      queue.push(cover);
+    });
+
+    const workers = Array.from({ length: CONCURRENCY }, () => worker(queue));
+    void Promise.all(workers);
+  }
+
+  document.addEventListener("astro:page-load", resolveCovers);
+</script>
