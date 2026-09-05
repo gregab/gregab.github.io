@@ -1,9 +1,15 @@
 ---
 /*
-  A vertical timeline of books, alternating left/right of a hairline spine.
-  Geometry is canonical — see TIMELINE-SPEC.md (shared with the standalone
-  /tools/curiosity-timeline generator) — colours come from the site's theme
-  tokens instead of the embed version's color-mix(currentColor) formulas.
+  A vertical timeline of books, alternating left and right of a coloured spine
+  that runs the length of the page. The alternation holds at every width — on
+  a phone the cards get small and the cover stacks above the title rather than
+  collapsing to a single column, because the zigzag *is* the timeline.
+
+  The spine is a five-stop gradient (--ct-tint-1..5 in theme.css) fading warm
+  to cool as you scroll, with an arrowhead at each end and the line dissolving
+  past both: the list has no first cause and no last entry. Each item samples
+  the same gradient at its own position, so its node, connector and cover
+  strip match the spine beside it.
 
   Cover images: `entry.cover`, when set, is used as-is. Otherwise a small
   client script below looks one up from Open Library at runtime (there is no
@@ -32,12 +38,32 @@ function initial(title: string): string {
   const withoutArticle = trimmed.replace(/^(the|an|a)\s+/i, "");
   return (withoutArticle.charAt(0) || trimmed.charAt(0) || "?").toUpperCase();
 }
+
+/*
+  Sample the spine gradient at an entry's position so its node and connector
+  are the colour of the line they touch. The stops live in theme.css (light
+  and dark swap them), so the mix has to happen in CSS rather than here —
+  color-mix between two adjacent tokens does it, and stays theme-aware.
+
+  Interpolating in oklab matches the gradient below, which also declares
+  oklab; a browser too old for `in oklab` falls back to sRGB in both places
+  at once, so the item colours never drift away from the spine.
+*/
+const TINT_STOPS = 5; // --ct-tint-1 .. --ct-tint-5
+
+function tintFor(index: number, total: number): string {
+  if (total < 2) return "var(--ct-tint-1)";
+  const t = (index / (total - 1)) * (TINT_STOPS - 1);
+  const lower = Math.min(Math.floor(t), TINT_STOPS - 2);
+  const pct = ((t - lower) * 100).toFixed(2);
+  return `color-mix(in oklab, var(--ct-tint-${lower + 2}) ${pct}%, var(--ct-tint-${lower + 1}))`;
+}
 ---
 
 <div class="ct">
   <ol class="ct-list">
     {
-      entries.map(entry => {
+      entries.map((entry, i) => {
         const meta = metaLine(entry);
         const needsCover = !entry.cover;
         // The display key covers are cached under (stable regardless of a
@@ -46,7 +72,7 @@ function initial(title: string): string {
         const queryTitle = entry.lookup ?? entry.title;
         const queryAuthor = entry.lookup ? "" : (entry.author ?? "");
         return (
-          <li class="ct-item">
+          <li class="ct-item" style={`--ct-tint: ${tintFor(i, entries.length)}`}>
             <a
               class="ct-card"
               href={entry.url}
@@ -96,19 +122,59 @@ function initial(title: string): string {
 <style>
   .ct {
     --ct-gutter: 2.5rem; /* width of the channel between card edge and spine */
-    --ct-spine: 50%; /* where the spine sits inside .ct-list */
+    --ct-spine: 50%; /* where the spine sits — centred at every width */
     /* The connector spans card edge → spine, which is half the gutter
        column: the gutter is centred on the spine, not beside it. */
     --ct-conn: calc(var(--ct-gutter) / 2);
     --ct-cover: 3rem; /* cover width; height follows 2:3 */
+    --ct-node-top: 0.95rem; /* node/connector height — first line of the title */
+    --ct-node: 0.5625rem; /* node diameter; must exceed --ct-width to hole the spine */
+    --ct-width: 3px; /* the spine's own weight */
+    /* How far the spine overshoots the list at each end. The arrowheads sit
+       inside this runway and the line fades to nothing across it. */
+    --ct-run: 4rem;
+    position: relative;
     max-width: 44rem;
     margin: 0 auto;
+    padding-block: var(--ct-run);
   }
   .ct,
   .ct *,
   .ct *::before,
   .ct *::after {
     box-sizing: border-box;
+  }
+
+  /*
+    The arrowheads. They sit *inside* the fade rather than at the very tip,
+    so the line runs on past them and dissolves — an arrow pointing at
+    something that keeps going, not a line that stops in a point. Each is
+    masked toward its tip for the same reason.
+  */
+  .ct::before,
+  .ct::after {
+    content: "";
+    position: absolute;
+    left: var(--ct-spine);
+    width: 0.75rem;
+    height: 0.85rem;
+    margin-left: -0.375rem;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .ct::before {
+    top: 1.1rem;
+    background: var(--ct-tint-1);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.3), rgb(0 0 0));
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.3), rgb(0 0 0));
+  }
+  .ct::after {
+    bottom: 1.1rem;
+    background: var(--ct-tint-5);
+    clip-path: polygon(50% 100%, 100% 0, 0 0);
+    -webkit-mask-image: linear-gradient(to top, rgb(0 0 0 / 0.3), rgb(0 0 0));
+    mask-image: linear-gradient(to top, rgb(0 0 0 / 0.3), rgb(0 0 0));
   }
 
   .ct-list {
@@ -121,12 +187,43 @@ function initial(title: string): string {
     /* the spine */
     content: "";
     position: absolute;
-    top: 0.5rem;
-    bottom: 0.5rem;
+    top: calc(-1 * var(--ct-run));
+    bottom: calc(-1 * var(--ct-run));
     left: var(--ct-spine);
-    width: 1px;
-    margin-left: -0.5px;
-    background: var(--border);
+    width: var(--ct-width);
+    margin-left: calc(var(--ct-width) / -2);
+    /* sRGB fallback first for browsers without gradient interpolation
+       spaces — it still runs the same five stops, just a shade duller
+       through the crossfades. */
+    background: linear-gradient(
+      var(--ct-tint-1),
+      var(--ct-tint-2),
+      var(--ct-tint-3),
+      var(--ct-tint-4),
+      var(--ct-tint-5)
+    );
+    background: linear-gradient(
+      to bottom in oklab,
+      var(--ct-tint-1),
+      var(--ct-tint-2),
+      var(--ct-tint-3),
+      var(--ct-tint-4),
+      var(--ct-tint-5)
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      rgb(0 0 0) var(--ct-run),
+      rgb(0 0 0) calc(100% - var(--ct-run)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      rgb(0 0 0) var(--ct-run),
+      rgb(0 0 0) calc(100% - var(--ct-run)),
+      transparent 100%
+    );
   }
 
   .ct-item {
@@ -142,19 +239,19 @@ function initial(title: string): string {
     /* the node — punches a hole in the spine at rest */
     content: "";
     position: absolute;
+    z-index: 1;
     left: var(--ct-spine);
-    top: 0.95rem;
-    width: 0.5rem;
-    height: 0.5rem;
-    margin: -0.25rem 0 0 -0.25rem;
+    top: var(--ct-node-top);
+    width: var(--ct-node);
+    height: var(--ct-node);
+    margin: calc(var(--ct-node) / -2) 0 0 calc(var(--ct-node) / -2);
     border-radius: 50%;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--ct-tint);
     background: var(--background);
   }
   .ct-item:has(> .ct-card:hover)::before,
   .ct-item:focus-within::before {
-    background: rgb(var(--mark) / var(--mark-alpha));
-    border-color: rgb(var(--mark) / var(--mark-alpha));
+    background: var(--ct-tint);
   }
 
   .ct-card {
@@ -182,11 +279,11 @@ function initial(title: string): string {
     /* connector, card edge → node */
     content: "";
     position: absolute;
-    top: 0.95rem;
+    top: var(--ct-node-top);
     height: 1px;
     width: var(--ct-conn);
     right: calc(-1 * var(--ct-conn));
-    background: var(--border);
+    background: color-mix(in oklab, var(--ct-tint) 55%, transparent);
   }
   .ct-item:nth-child(even) > .ct-card::after {
     right: auto;
@@ -214,14 +311,14 @@ function initial(title: string): string {
     color: var(--muted-foreground);
   }
   .ct-cover::after {
-    /* placeholder "book spine" strip */
+    /* placeholder "book spine" strip, in this entry's colour */
     content: "";
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
     width: 2px;
-    background: rgb(var(--mark) / var(--mark-alpha));
+    background: var(--ct-tint);
   }
   .ct-cover img {
     position: relative;
@@ -235,6 +332,10 @@ function initial(title: string): string {
   .ct-text {
     min-width: 0;
     padding-top: 0.1rem;
+    /* The title is inline, so its own line-height loses to the block's
+       strut — 1.65 inherited from body, which pulls a wrapped title apart
+       into two separate-looking lines. Set it here, where it takes. */
+    line-height: 1.35;
   }
   .ct-title {
     display: inline;
@@ -252,32 +353,56 @@ function initial(title: string): string {
   }
   .ct-meta {
     display: block;
-    margin-top: 0.2rem;
+    margin-top: 0.25rem;
+    line-height: 1.4;
   }
 
-  /* Single column at phone widths: spine on the left, every card to its
-     right. */
+  /*
+    Phones keep the spine centred and keep alternating — the zigzag is what
+    makes it read as a timeline rather than a list, and collapsing it to a
+    left rail threw that away. Half of ~343px is too narrow for a cover
+    beside a title, so the card stacks instead: cover on top, hugging the
+    spine, title beneath it. Everything shrinks a step to pay for it.
+  */
   @media (max-width: 40rem) {
     .ct {
       --ct-gutter: 1.5rem;
-      --ct-spine: 0.3rem;
-      --ct-conn: calc(var(--ct-gutter) - var(--ct-spine));
+      --ct-cover: 2.25rem;
+      --ct-node-top: 1.7rem; /* centre of the stacked cover */
+      --ct-node: 0.5rem;
+      --ct-width: 2.5px;
+      --ct-run: 3rem;
     }
-    .ct-item {
-      grid-template-columns: 0 var(--ct-gutter) 1fr;
+    .ct-item + .ct-item {
+      margin-top: 1.15rem;
     }
     .ct-card,
     .ct-item:nth-child(even) > .ct-card {
-      grid-column: 3;
-      justify-self: start;
-      flex-direction: row;
-      text-align: left;
+      flex-direction: column;
+      gap: 0.4rem;
+      width: 100%;
       max-width: none;
     }
-    .ct-card::after,
-    .ct-item:nth-child(even) > .ct-card::after {
-      left: calc(-1 * var(--ct-conn));
-      right: auto;
+    .ct-card {
+      align-items: flex-end;
+    }
+    .ct-item:nth-child(even) > .ct-card {
+      align-items: flex-start;
+    }
+    /* Down a step from the 20px list title: at this measure 20px runs to
+       three or four words a line. Tailwind's text-xl is in @layer utilities,
+       so this unlayered rule wins without !important. */
+    .ct-text {
+      padding-top: 0;
+      line-height: 1.3;
+    }
+    .ct-title {
+      font-size: 0.9375rem;
+      line-height: 1.3;
+    }
+    .ct-meta {
+      font-size: 0.75rem;
+      margin-top: 0.2rem;
     }
   }
 </style>

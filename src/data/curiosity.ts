@@ -155,6 +155,11 @@ export const CURIOSITY_TIMELINE: CuriosityEntry[] = [
     url: "https://www.goodreads.com/book/show/17623632-functional-javascript",
   },
   {
+    title: "Jonathan Strange & Mr Norrell",
+    author: "Susanna Clarke",
+    url: "https://www.goodreads.com/book/show/14201.Jonathan_Strange_Mr_Norrell",
+  },
+  {
     title: "The Little Schemer",
     author: "Daniel P. Friedman and Matthias Felleisen",
     url: "https://www.goodreads.com/book/show/548914.The_Little_Schemer",

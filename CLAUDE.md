@@ -55,7 +55,8 @@ portable markdown.
 
 ## What is public right now
 
-The site is deliberately minimal: the homepage bio, `/resources` and `/tools`.
+The site is deliberately minimal: the homepage bio, `/curiosity`, `/resources`
+and `/tools`.
 Everything else is **parked, not deleted** — Greg wants to publish those sections
 when he has real content, so the code and schemas all still exist.
 
@@ -151,6 +152,23 @@ npm run build   # astro check && astro build && pagefind --site dist
   to a single mark) and a lead paragraph. The 48px "Welcome" that used to sit
   there spent the largest type on the page on the least informative line.
 - **No filled buttons anywhere.** Bordered or text-only.
+- **The curiosity timeline's spine is the one place colour runs free**, and it
+  is not a violation of the rule above — it is chrome, never a link treatment.
+  `--ct-tint-1..5` in `theme.css` are five stops (gold → terracotta → rose →
+  violet → slate) that the spine crossfades through over the length of the page,
+  and each entry samples the same gradient with `color-mix` so its node,
+  connector and cover strip match the line beside it. It ends on `--accent`, so
+  the arc lands on a colour the palette already owns. Titles there still take
+  the amber `mark-hover` like every other list link.
+- **That spine is a double-headed arrow that fades out at both ends**, and the
+  arrowheads deliberately sit *inside* the fade rather than at the tips: the
+  line runs past them and dissolves. The list has no first cause and no last
+  entry, and the graphic should say so. The runway this needs is `--ct-run`;
+  don't reclaim it as stray padding.
+- **The timeline alternates left/right at every width, phones included.** The
+  zigzag is what makes it read as a timeline rather than a list, so narrow
+  screens shrink the card and stack the cover above the title instead of
+  collapsing to a single left rail.
 - **Fonts:** Newsreader for headings and body (one family, so the page has one
   voice), IBM Plex Sans for chrome only, IBM Plex Mono for code and tools.
   They come from the `@fontsource/*` devDependencies via Astro's **local** font
