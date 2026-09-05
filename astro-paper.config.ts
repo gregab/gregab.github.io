@@ -25,7 +25,6 @@ export default defineAstroPaperConfig({
     search: false,
   },
   socials: [
-    { name: "github", url: "https://github.com/gregab" },
     // Cloudflare Email Routing alias on this domain, forwarding to Greg's
     // inbox. Never put a personal address here.
     { name: "mail", url: "mailto:hello@gregbigelow.com" },
