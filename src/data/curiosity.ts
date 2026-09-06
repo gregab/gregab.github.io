@@ -11,9 +11,8 @@
   `cover` is optional. When it is set the timeline uses it as-is. When it is
   empty the page asks Open Library for a cover in the visitor's browser (see
   CuriosityTimeline.astro) and falls back to the drawn placeholder if that finds
-  nothing. Pasting real cover URLs in here — the /tools/curiosity-timeline
-  generator will hand you a set — removes that lookup entirely, which is the
-  better end state.
+  nothing. Baking real cover URLs in here — `npm run covers` resolves them
+  once, offline — removes that lookup entirely, which is the better end state.
 */
 
 export interface CuriosityEntry {

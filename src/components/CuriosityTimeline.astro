@@ -13,9 +13,9 @@
 
   Cover images: `entry.cover`, when set, is used as-is. Otherwise a small
   client script below looks one up from Open Library at runtime (there is no
-  network access at build time). Pasting real cover URLs into
-  src/data/curiosity.ts — the /tools/curiosity-timeline generator emits them
-  as JSON — removes this lookup entirely, which is the better end state.
+  network access at build time). Baking real cover URLs into
+  src/data/curiosity.ts — `npm run covers` resolves them once, offline —
+  removes this lookup entirely, which is the better end state.
 */
 import type { CuriosityEntry } from "@/data/curiosity";
 
