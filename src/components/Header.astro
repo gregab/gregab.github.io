@@ -99,14 +99,6 @@ const isActive = (path: string) => {
             {t.nav.resources}
           </a>
         </li>
-        <li>
-          <a
-            href={getRelativeLocaleUrl(locale, "tools")}
-            class:list={{ "active-nav": isActive("/tools") }}
-          >
-            {t.nav.tools}
-          </a>
-        </li>
         {
           features.search !== false && (
             <li class="flex items-center justify-center">

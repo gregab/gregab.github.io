@@ -11,8 +11,8 @@ interface SiteConfig {
   profile?: string;
   /**
    * Public repository this site is built from, e.g.
-   * "https://github.com/user/repo". Used to link a tool's source from
-   * /tools; omit and those links are simply left out.
+   * "https://github.com/user/repo". Used anywhere the site links back to its
+   * own source; omit and those links are simply left out.
    */
   repo?: string;
   /** Fallback OG image filename in /public, e.g. "og.jpg" */

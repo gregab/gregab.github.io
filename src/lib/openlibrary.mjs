@@ -25,11 +25,6 @@
   gives up whenever Open Library's top-ranked edition happens to have no cover
   scanned, even though the third or fourth does. So ask for a page of results
   and take the first that actually has one.
-
-  A note for whoever changes this: public/tools/curiosity-timeline.html runs
-  the same ladder against the same API. It is deliberately a single
-  self-contained file with no imports, so it carries its own copy. Change one,
-  change the other.
 */
 
 const SEARCH_URL = "https://openlibrary.org/search.json";

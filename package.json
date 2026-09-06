@@ -1,6 +1,6 @@
 {
   "name": "gregbigelow-site",
-  "description": "Greg Bigelow's personal website — writing, tools, resources, and books.",
+  "description": "Greg Bigelow's personal website — writing, resources, and books.",
   "type": "module",
   "version": "1.0.0",
   "private": true,

@@ -55,9 +55,9 @@ portable markdown.
 
 ## What is public right now
 
-The site is deliberately minimal: the homepage bio, `/curiosity`, `/resources`
-and `/tools`.
-Everything else is **parked, not deleted** — Greg wants to publish those sections
+The site is deliberately minimal: the homepage bio, `/curiosity` and
+`/resources`.
+Most of the rest is **parked, not deleted** — Greg wants to publish those sections
 when he has real content, so the code and schemas all still exist.
 
 Parking uses Astro's own convention: a leading `_` excludes a file or directory
@@ -73,6 +73,11 @@ content. To bring a section back, drop the underscore and re-add its nav item in
 | Tags, archives, search | `src/pages/_tags/`, `_archives/`, `_search.astro` |
 | RSS feed | `src/pages/_rss.xml.ts` |
 | Placeholder content | `_`-prefixed files under `src/content/*/` |
+
+The **tools section is gone, not parked**: `/tools`, the standalone HTML in
+`public/tools/` and the `src/lib/tools.ts` discovery module were all deleted,
+along with the nav item and the "create your own" link on `/curiosity`. Git
+history has them if it comes back.
 
 `features.showArchives` and `features.search` are `false` in
 `astro-paper.config.ts` to match. Layout's RSS autodiscovery tag was removed
@@ -96,16 +101,6 @@ npm run build   # astro check && astro build && pagefind --site dist
   `books` and `resources` are separate content collections with their own schemas;
   all four collections (`essays`, `pages`, `books`, `resources`) are defined in
   `src/content.config.ts`.
-- **Tools** are self-contained HTML in `public/tools/`. `src/lib/tools.ts` discovers
-  them at build time by parsing each file's `<title>` and `<meta name="description">`.
-  Dropping a file in is the whole workflow — there is no manifest to update.
-  Two gotchas, both already fixed and both easy to reintroduce:
-  - It resolves the directory from `process.cwd()`, **not** from `import.meta.url`.
-    The module-relative path works in `astro dev` but points at a bundled chunk
-    during `astro build`, which silently produces an empty tool list.
-  - Renaming a tool leaves a redirect stub at the old filename so existing links
-    survive. `tools.ts` skips any file containing an `http-equiv="refresh"`, so
-    stubs don't appear as extra tools.
 - **Resources** are never hand-edited. `npm run resources -- <cmd>` (see
   `scripts/resources.mjs`) owns slugs, `order` numbers and file layout; it keeps
   `order` at 1..N in render order so re-arranging is one command instead of
@@ -123,9 +118,7 @@ npm run build   # astro check && astro build && pagefind --site dist
   the page's runtime fallback. Note **the display byline is not a search term**:
   Open Library matches authors individually, so "Gilles Deleuze and Félix
   Guattari" matches nothing and gets narrowed to the first name before it is
-  sent. That bug cost six entries their covers. `public/tools/curiosity-timeline.html`
-  is a single self-contained file and so carries its own copy of the same
-  ladder — change one, change the other.
+  sent. That bug cost six entries their covers.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom
@@ -184,7 +177,7 @@ npm run build   # astro check && astro build && pagefind --site dist
   screens shrink the card and stack the cover above the title instead of
   collapsing to a single left rail.
 - **Fonts:** Newsreader for headings and body (one family, so the page has one
-  voice), IBM Plex Sans for chrome only, IBM Plex Mono for code and tools.
+  voice), IBM Plex Sans for chrome only, IBM Plex Mono for code.
   They come from the `@fontsource/*` devDependencies via Astro's **local** font
   provider, so `npm run build` never touches the network for a typeface — see
   the comment block in `astro.config.ts` for why `fontProviders.npm()` doesn't
@@ -203,7 +196,7 @@ npm run build   # astro check && astro build && pagefind --site dist
 Be intelligent about it rather than reaching for the biggest model by reflex.
 Sonnet handles most of the work here: converting a staged file into content,
 adding or editing an entry, copy fixes, dependency bumps, chasing a build
-error, dropping a tool into `public/tools/`.
+error.
 
 Save Opus for the work that actually benefits from it — high-level planning
 and design, visual and information-architecture decisions, restructuring a
