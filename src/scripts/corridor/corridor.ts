@@ -9,8 +9,12 @@
   theme tokens in theme.css; the only network requests are the covers.
 
   Performance notes, since phones are the target:
-  - The frames' mouldings are one InstancedMesh each; per-frame draw calls
-    are the art plane, the plaque and an invisible hit plane.
+  - Every moulding part is an InstancedMesh shared by all frames of its
+    style (see frames.ts); per-frame draw calls are the art plane, the
+    plaque and an invisible hit plane.
+  - A moving walkway runs down the middle. Stand on it and it carries you
+    toward the far end; its tread animates, so the scene renders at a low
+    idle rate rather than not at all.
   - Real lights are a lantern on the camera plus a small pool of spotlights
     that hop to the nearest frames. The glow you see on far walls and the
     floor is unlit additive decals, which cost nothing.
@@ -29,6 +33,14 @@ import {
   writeCoverCache,
 } from "@/lib/coverCache";
 import { Controls } from "./input";
+import { Walkway } from "./walkway";
+import {
+  type FrameStyle,
+  buildFrameMaterials,
+  buildFrameStyles,
+  metalTint,
+  styleIndexFor,
+} from "./frames";
 import {
   type Palette,
   type RGB,
@@ -69,9 +81,10 @@ const FRAME_W = 0.66; // the art
 const FRAME_H = 0.99;
 const BORDER = 0.11; // moulding width
 const FRAME_Y = 1.62; // centre height
-const PLAQUE_W = 0.42;
-const PLAQUE_H = 0.105;
-const PLAQUE_Y = FRAME_Y - FRAME_H / 2 - BORDER - 0.09;
+const PLAQUE_W = 0.62; // wide enough to read from the middle of the hall
+const PLAQUE_H = 0.17;
+const PLAQUE_Y = FRAME_Y - FRAME_H / 2 - BORDER - 0.06 - PLAQUE_H / 2;
+const BELT_SPEED = 1.0; // m/s; an airport walkway runs about 0.7
 const FIXTURE_IN = 0.55; // ceiling spot's distance from the wall
 
 const WALK = 2.5; // m/s
@@ -96,6 +109,10 @@ interface FrameRec {
   hit: THREE.Mesh;
   centre: THREE.Vector3;
   coverState: "idle" | "loading" | "done" | "failed";
+  arched: boolean;
+  /** Instances that make up this frame's moulding, for highlighting. */
+  slots: { mesh: THREE.InstancedMesh; index: number }[];
+  tintColor: THREE.Color;
 }
 
 interface Els {
@@ -151,11 +168,11 @@ export class Corridor {
   private coneMat!: THREE.MeshBasicMaterial;
   private poolMat!: THREE.MeshBasicMaterial;
   private discMat!: THREE.MeshBasicMaterial;
-  private goldMat!: THREE.MeshStandardMaterial;
   private hemi!: THREE.HemisphereLight;
+  private walkway!: Walkway;
+  private lastRenderAt = 0;
   private lantern!: THREE.PointLight;
   private spots: THREE.SpotLight[] = [];
-  private outerRing!: THREE.InstancedMesh;
   private cones!: THREE.InstancedMesh;
   private pools!: THREE.InstancedMesh;
   private discs!: THREE.InstancedMesh;
@@ -207,6 +224,7 @@ export class Corridor {
     pmrem.dispose();
 
     this.buildHall();
+    this.buildWalkway();
     this.buildFrames();
     this.buildLights();
     this.applyPalette();
@@ -387,38 +405,38 @@ export class Corridor {
     );
   }
 
+  private buildWalkway(): void {
+    const n = this.entries.length;
+    // From just before the first frame to just past the last, so riding it
+    // end to end passes every book and leaves you facing the far doorway.
+    this.walkway = new Walkway({
+      zStart: 1.4,
+      zEnd: -(n - 1) * SPACING - 1.8,
+      speed: BELT_SPEED,
+    });
+    this.scene.add(this.walkway.group);
+  }
+
   private buildFrames(): void {
     const n = this.entries.length;
     const patina = new THREE.CanvasTexture(patinaCanvas());
     patina.wrapS = patina.wrapT = THREE.RepeatWrapping;
     patina.repeat.set(3, 3);
 
-    this.goldMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#c9a24a"),
-      metalness: 0.92,
-      roughness: 0.42,
-      roughnessMap: patina,
-      bumpMap: patina,
-      bumpScale: 0.6,
-      envMapIntensity: 1,
+    const mats = buildFrameMaterials(patina);
+    const styles = buildFrameStyles(mats, FRAME_W + 0.02, FRAME_H + 0.02);
+    const styleOf = this.entries.map((_, i) => styleIndexFor(i, styles.length));
+
+    // One InstancedMesh per part per style, sized to the frames that use it.
+    const partMeshes = styles.map((style, si) => {
+      const users = styleOf.filter(x => x === si).length;
+      return style.parts.map(part => {
+        const mesh = new THREE.InstancedMesh(part.geometry, part.material, Math.max(1, users * part.placements.length));
+        mesh.count = users * part.placements.length;
+        return mesh;
+      });
     });
-
-    const outerGeo = ringGeometry(
-      FRAME_W + 2 * BORDER, FRAME_H + 2 * BORDER,
-      FRAME_W + 0.02, FRAME_H + 0.02,
-      0.04, 0.02, 0.03
-    );
-    const lipGeo = ringGeometry(
-      FRAME_W + 0.075, FRAME_H + 0.075,
-      FRAME_W - 0.01, FRAME_H - 0.01,
-      0.025, 0.01, 0.012
-    );
-    const bossGeo = new THREE.SphereGeometry(0.036, 14, 10);
-    bossGeo.scale(1, 1, 0.55);
-
-    this.outerRing = new THREE.InstancedMesh(outerGeo, this.goldMat, n);
-    const lipRing = new THREE.InstancedMesh(lipGeo, this.goldMat, n);
-    const bosses = new THREE.InstancedMesh(bossGeo, this.goldMat, n * 4);
+    const nextSlot = styles.map(style => style.parts.map(() => 0));
 
     const coneTex = new THREE.CanvasTexture(coneCanvas());
     coneTex.colorSpace = THREE.SRGBColorSpace;
@@ -451,8 +469,8 @@ export class Corridor {
     this.pools.renderOrder = 2;
 
     const hitGeo = new THREE.PlaneGeometry(
-      FRAME_W + 2 * BORDER + 0.12,
-      FRAME_H + 2 * BORDER + 0.42
+      FRAME_W + 2 * BORDER + 0.16,
+      FRAME_H + 2 * BORDER + 0.6
     );
     const plaqueGeo = new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, 0.012);
     const artGeo = new THREE.PlaneGeometry(FRAME_W + 0.02, FRAME_H + 0.02);
@@ -461,36 +479,35 @@ export class Corridor {
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3(1, 1, 1);
     const p = new THREE.Vector3();
-    const white = new THREE.Color(1, 1, 1);
 
     this.entries.forEach((entry, i) => {
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
       const z = -i * SPACING;
       const tint = tintAt(this.palette, n > 1 ? i / (n - 1) : 0);
       const facing = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+      const si = styleOf[i];
+      const style: FrameStyle = styles[si];
 
       const group = new THREE.Group();
       group.position.set(side * HALL_W / 2, FRAME_Y, z);
       group.rotation.y = facing;
       group.updateMatrixWorld(true);
 
-      // Instanced mouldings share the group's transform.
+      // Moulding parts share the group's transform, offset per placement.
       q.setFromEuler(new THREE.Euler(0, facing, 0));
       p.set(side * HALL_W / 2, FRAME_Y, z);
-      m.compose(p, q, s);
-      this.outerRing.setMatrixAt(i, m);
-      this.outerRing.setColorAt(i, white);
-      // The lip sits proud of the outer ring's face.
-      const lipOffset = new THREE.Vector3(0, 0, 0.05).applyQuaternion(q);
-      m.compose(p.clone().add(lipOffset), q, s);
-      lipRing.setMatrixAt(i, m);
-      // Corner bosses
-      const bx = FRAME_W / 2 + BORDER / 2 + 0.01;
-      const by = FRAME_H / 2 + BORDER / 2 + 0.01;
-      [[-bx, -by], [bx, -by], [-bx, by], [bx, by]].forEach(([ox, oy], k) => {
-        const off = new THREE.Vector3(ox, oy, 0.075).applyQuaternion(q);
-        m.compose(p.clone().add(off), q, s);
-        bosses.setMatrixAt(i * 4 + k, m);
+      const tintColor = metalTint(i);
+      const slots: FrameRec["slots"] = [];
+      style.parts.forEach((part, pi) => {
+        const mesh = partMeshes[si][pi];
+        for (const place of part.placements) {
+          const idx = nextSlot[si][pi]++;
+          const off = place.clone().applyQuaternion(q);
+          m.compose(p.clone().add(off), q, s);
+          mesh.setMatrixAt(idx, m);
+          mesh.setColorAt(idx, tintColor);
+          slots.push({ mesh, index: idx });
+        }
       });
 
       // Wall cone, slightly above the frame centre, flush to the wall.
@@ -512,7 +529,7 @@ export class Corridor {
       this.discs.setMatrixAt(i, m);
 
       // The art
-      const art = new Art({ title: entry.title, author: entry.author, tint, family: this.family });
+      const art = new Art({ title: entry.title, author: entry.author, tint, family: this.family, arched: style.arched });
       const artTex = new THREE.CanvasTexture(art.canvas);
       artTex.colorSpace = THREE.SRGBColorSpace;
       artTex.anisotropy = this.plasterTex.anisotropy;
@@ -549,7 +566,7 @@ export class Corridor {
       // Invisible hit plane over frame + plaque
       const hit = new THREE.Mesh(hitGeo);
       hit.visible = false;
-      hit.position.set(0, -0.15, 0.06);
+      hit.position.set(0, -0.22, 0.06);
       hit.userData.index = i;
       group.add(hit);
       this.hits.push(hit);
@@ -567,19 +584,25 @@ export class Corridor {
         hit,
         centre: new THREE.Vector3(side * HALL_W / 2, FRAME_Y, z),
         coverState: "idle",
+        arched: style.arched,
+        slots,
+        tintColor,
       });
     });
 
-    this.outerRing.instanceMatrix.needsUpdate = true;
-    lipRing.instanceMatrix.needsUpdate = true;
-    bosses.instanceMatrix.needsUpdate = true;
+    for (const meshes of partMeshes) {
+      for (const mesh of meshes) {
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        this.scene.add(mesh);
+      }
+    }
     this.cones.instanceMatrix.needsUpdate = true;
     this.pools.instanceMatrix.needsUpdate = true;
     fixtures.instanceMatrix.needsUpdate = true;
     this.discs.instanceMatrix.needsUpdate = true;
-    if (this.outerRing.instanceColor) this.outerRing.instanceColor.needsUpdate = true;
 
-    this.scene.add(this.outerRing, lipRing, bosses, this.cones, this.pools, fixtures, this.discs);
+    this.scene.add(this.cones, this.pools, fixtures, this.discs);
   }
 
   private buildLights(): void {
@@ -633,6 +656,7 @@ export class Corridor {
 
     this.coneMat.opacity = dark ? 0.85 : 0.55;
     this.poolMat.opacity = dark ? 0.7 : 0.45;
+    this.walkway.setTheme(dark);
 
     // Per-frame light colours: the arc, lifted toward warm white so it
     // reads as light on plaster rather than paint.
@@ -657,7 +681,7 @@ export class Corridor {
   private redrawText(): void {
     for (const f of this.frames) {
       if (f.coverState !== "done") {
-        f.art = new Art({ title: f.entry.title, author: f.entry.author, tint: f.tint, family: this.family });
+        f.art = new Art({ title: f.entry.title, author: f.entry.author, tint: f.tint, family: this.family, arched: f.arched });
         f.artTex.image = f.art.canvas;
         f.artTex.needsUpdate = true;
       }
@@ -698,8 +722,14 @@ export class Corridor {
     this.updateAim();
     this.pumpCovers();
 
-    if (moved || this.needsRender) {
+    // Idle, the only thing moving is the walkway's tread, and it does not
+    // need 60 frames a second — or any, for a visitor who asked for less
+    // motion.
+    const idleTick = !this.reducedMotion && now - this.lastRenderAt >= 1000 / 24;
+    if (moved || this.needsRender || idleTick) {
       const t0 = performance.now();
+      this.walkway.update(Math.min(0.1, (now - this.lastRenderAt) / 1000));
+      this.lastRenderAt = now;
       this.renderer.render(this.scene, this.camera);
       this.needsRender = false;
       if (moved) this.watchPerformance(performance.now() - t0);
@@ -735,10 +765,14 @@ export class Corridor {
     if (Math.abs(this.vel.x) < 0.005) this.vel.x = 0;
     if (Math.abs(this.vel.z) < 0.005) this.vel.z = 0;
 
-    const moving = this.vel.x !== 0 || this.vel.z !== 0;
+    // The walkway carries whoever stands on it, walking or not — unless the
+    // visitor asked for less motion, in which case it is only a floor.
+    const onBelt = !this.reducedMotion && this.walkway.carries(this.pos.x, this.pos.z);
+    const moving = this.vel.x !== 0 || this.vel.z !== 0 || onBelt;
     if (moving) {
       this.pos.x += this.vel.x * dt;
       this.pos.z += this.vel.z * dt;
+      if (onBelt) this.pos.z -= this.walkway.speed * dt;
       const xLimit = HALL_W / 2 - 0.42;
       this.pos.x = Math.max(-xLimit, Math.min(xLimit, this.pos.x));
       this.pos.z = Math.max(this.zMin + 0.9, Math.min(this.zMax - 0.9, this.pos.z));
@@ -835,16 +869,19 @@ export class Corridor {
     }
     const highlight = hovered ? hovered.index : -1;
     if (highlight !== this.highlightIndex) {
-      const c = new THREE.Color();
-      if (this.highlightIndex >= 0) {
-        this.outerRing.setColorAt(this.highlightIndex, c.set(1, 1, 1));
-      }
-      if (highlight >= 0) {
-        this.outerRing.setColorAt(highlight, c.set(1.35, 1.28, 1.1));
-      }
-      if (this.outerRing.instanceColor) this.outerRing.instanceColor.needsUpdate = true;
+      if (this.highlightIndex >= 0) this.tintFrame(this.frames[this.highlightIndex], 1);
+      if (highlight >= 0) this.tintFrame(this.frames[highlight], 1.35);
       this.highlightIndex = highlight;
       this.needsRender = true;
+    }
+  }
+
+  /** Multiply a frame's moulding colour — the hover glow. */
+  private tintFrame(f: FrameRec, gain: number): void {
+    const c = f.tintColor.clone().multiplyScalar(gain);
+    for (const { mesh, index } of f.slots) {
+      mesh.setColorAt(index, c);
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -990,45 +1027,13 @@ export class Corridor {
         mat.dispose();
       }
     });
+    this.walkway.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
   }
 }
 
 /* ---- helpers ----------------------------------------------------------- */
-
-/** A rectangular ring extruded with a rounded bevel: a picture moulding. */
-function ringGeometry(
-  ow: number, oh: number, iw: number, ih: number,
-  depth: number, bevelThickness: number, bevelSize: number
-): THREE.BufferGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(-ow / 2, -oh / 2);
-  shape.lineTo(ow / 2, -oh / 2);
-  shape.lineTo(ow / 2, oh / 2);
-  shape.lineTo(-ow / 2, oh / 2);
-  shape.closePath();
-  const hole = new THREE.Path();
-  hole.moveTo(-iw / 2, -ih / 2);
-  hole.lineTo(-iw / 2, ih / 2);
-  hole.lineTo(iw / 2, ih / 2);
-  hole.lineTo(iw / 2, -ih / 2);
-  hole.closePath();
-  shape.holes.push(hole);
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: true,
-    bevelThickness,
-    bevelSize,
-    bevelSegments: 4,
-    curveSegments: 2,
-  });
-  // Extrude starts its back bevel at -bevelThickness; shift so the back
-  // face sits on z = 0, the wall.
-  geo.translate(0, 0, bevelThickness);
-  geo.computeVertexNormals();
-  return geo;
-}
 
 function toColor(c: RGB): THREE.Color {
   return new THREE.Color(c[0], c[1], c[2]);

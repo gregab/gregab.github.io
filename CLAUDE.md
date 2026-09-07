@@ -195,11 +195,18 @@ npm run build   # astro check && astro build && pagefind --site dist
   walnut and brass are materials, not palette. Text in the scene is metadata
   only: title and author on the plaque and in the caption pill; the help line
   under the canvas is chrome. Frames are all one size on purpose — a gallery
-  hang, not a size-means-importance chart. Controls follow convention and
-  should stay conventional: W A S D / arrows on a keyboard (arrows turn, A/D
-  strafe), drag to look, a floating stick in the lower-left on touch with
-  drag-to-look elsewhere. The caption pill sits at the bottom on desktop and
-  the top on touch, because the bottom is the stick's.
+  hang, not a size-means-importance chart — but not one design: five
+  mouldings in `src/scripts/corridor/frames.ts` (ornate gilt, walnut
+  cassetta, reeded antique gold, ebonised with a gilt slip, arched
+  tabernacle) cycle so no two neighbours match, and the gilt varies a shade
+  per frame. The moving walkway down the middle (`walkway.ts`) carries
+  whoever stands on it toward the far end; its tread is why the scene
+  renders at a low idle rate instead of not at all. Controls follow
+  convention and should stay conventional: W A S D / arrows on a keyboard
+  (arrows turn, A/D strafe), drag to look, a floating stick in the
+  lower-left on touch with drag-to-look elsewhere. The caption pill sits at
+  the top, clear of the plaque under every frame; on touch it becomes a
+  full-width band and the fullscreen button moves to the bottom-right.
 - **That spine is a double-headed arrow that fades out at both ends**, and the
   arrowheads deliberately sit *inside* the fade rather than at the tips: the
   line runs past them and dissolves. The list has no first cause and no last

@@ -276,10 +276,11 @@ export interface PlaqueText {
 
 /**
  * A brass plate with the title engraved on it, the author in smaller
- * italics beneath. 1024×256 so it stays crisp when you walk right up.
+ * italics beneath. 1024×280 for a 0.62 × 0.17 m plate — large enough to
+ * read from the middle of the hall, and crisp when you walk up to it.
  */
 export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElement {
-  const w = 1024, h = 256;
+  const w = 1024, h = 280;
   const c = makeCanvas(w, h);
   const ctx = ctx2d(c);
 
@@ -324,9 +325,9 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
 
   // Engraving: dark fill with a hair of light offset below, so it reads as
   // cut into the metal rather than printed on it.
-  const ink = "rgba(48,30,10,0.92)";
+  const ink = "rgba(48,30,10,0.94)";
   const glint = "rgba(255,245,215,0.45)";
-  const maxWidth = w - 140;
+  const maxWidth = w - 130;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -336,14 +337,15 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     .join(" · ");
   const authorFont = (px: number) => `italic 400 ${px}px ${family}`;
 
-  const title = fitText(ctx, text.title, titleFont, 72, 40, maxWidth, 2);
+  const title = fitText(ctx, text.title, titleFont, 100, 54, maxWidth, 2);
   const author = authorLine
-    ? fitText(ctx, authorLine, authorFont, 40, 26, maxWidth, 1)
+    ? fitText(ctx, authorLine, authorFont, 64, 40, maxWidth, 1)
     : { lines: [], px: 0 };
 
-  const titleH = title.lines.length * title.px * 1.08;
-  const authorH = author.lines.length ? author.px * 1.3 + 8 : 0;
-  let y = h / 2 - (titleH + authorH) / 2 + (title.px * 1.08) / 2;
+  const titleLh = title.px * 1.06;
+  const titleH = title.lines.length * titleLh;
+  const authorH = author.lines.length ? author.px * 1.25 + 10 : 0;
+  let y = h / 2 - (titleH + authorH) / 2 + titleLh / 2;
 
   ctx.font = titleFont(title.px);
   for (const line of title.lines) {
@@ -351,10 +353,10 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     ctx.fillText(line, w / 2, y + 2);
     ctx.fillStyle = ink;
     ctx.fillText(line, w / 2, y);
-    y += title.px * 1.08;
+    y += titleLh;
   }
   if (author.lines.length) {
-    y += 8 + (author.px * 1.3) / 2 - (title.px * 1.08) / 2;
+    y += 10 + (author.px * 1.25) / 2 - titleLh / 2;
     ctx.font = authorFont(author.px);
     ctx.fillStyle = glint;
     ctx.fillText(author.lines[0], w / 2, y + 2);
@@ -372,13 +374,16 @@ export interface ArtSpec {
   /** This entry's colour on the arc; used for the placeholder cloth. */
   tint: RGB;
   family: string;
+  /** Round-headed window, for the arched frames. */
+  arched?: boolean;
 }
 
 /**
- * The picture inside the frame: a linen mat with a bevelled window, and in
- * the window either the cover image (fitted, on a dark backing) or, until it
- * arrives or if it never does, a cloth-bound book in this entry's colour
- * with the title stamped in gilt. Canvas is 2:3 to match the plane.
+ * The picture inside the frame: a linen mat with a bevelled window — square
+ * or round-headed to match the frame — and in the window either the cover
+ * image (fitted, on a dark backing) or, until it arrives or if it never
+ * does, a cloth-bound book in this entry's colour with the title stamped in
+ * gilt. Canvas is 2:3 to match the plane.
  */
 export class Art {
   readonly canvas: HTMLCanvasElement;
@@ -393,8 +398,30 @@ export class Art {
     this.drawPlaceholder();
   }
 
+  private get window(): { x: number; y: number; iw: number; ih: number } {
+    const { w, h, mat } = this;
+    return { x: mat, y: mat, iw: w - 2 * mat, ih: h - 2 * mat };
+  }
+
+  /** Trace the window opening as the current path. */
+  private windowPath(): void {
+    const { ctx } = this;
+    const { x, y, iw, ih } = this.window;
+    ctx.beginPath();
+    if (this.spec.arched) {
+      const r = iw / 2;
+      ctx.moveTo(x, y + ih);
+      ctx.lineTo(x, y + r);
+      ctx.arc(x + r, y + r, r, Math.PI, 0, false);
+      ctx.lineTo(x + iw, y + ih);
+      ctx.closePath();
+    } else {
+      ctx.rect(x, y, iw, ih);
+    }
+  }
+
   private drawMat(): void {
-    const { ctx, w, h, mat } = this;
+    const { ctx, w, h } = this;
     ctx.fillStyle = "#efe6d6";
     ctx.fillRect(0, 0, w, h);
     // Linen weave
@@ -403,95 +430,130 @@ export class Art {
       ctx.fillStyle = rnd() > 0.5 ? "rgba(255,255,255,0.35)" : "rgba(120,100,70,0.12)";
       ctx.fillRect(rnd() * w, rnd() * h, 1, 1);
     }
-    // Bevel around the window: light top/left, shadow bottom/right.
-    const b = 7;
-    ctx.fillStyle = "#fbf6ec";
-    ctx.fillRect(mat - b, mat - b, w - 2 * (mat - b), b); // top
-    ctx.fillRect(mat - b, mat - b, b, h - 2 * (mat - b)); // left
-    ctx.fillStyle = "#cbbfa9";
-    ctx.fillRect(mat - b, h - mat, w - 2 * (mat - b), b); // bottom
-    ctx.fillRect(w - mat, mat - b, b, h - 2 * (mat - b)); // right
-    // Inner shadow line so the print sits below the mat.
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
-    ctx.fillRect(mat, mat, w - 2 * mat, 3);
-    ctx.fillRect(mat, mat, 3, h - 2 * mat);
+    // Bevel: a light rim around the window, its lower-right edge in shadow.
+    // The content is drawn inside the path afterwards and covers the inner
+    // half of these strokes, leaving a clean cut edge.
+    ctx.save();
+    ctx.translate(5, 5);
+    this.windowPath();
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = "#cbbfa9";
+    ctx.stroke();
+    ctx.restore();
+    this.windowPath();
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = "#fbf6ec";
+    ctx.stroke();
+  }
+
+  /** Run `draw` clipped to the window, then add the window's inner shadow. */
+  private inWindow(draw: () => void): void {
+    const { ctx } = this;
+    ctx.save();
+    this.windowPath();
+    ctx.clip();
+    draw();
+    this.windowPath();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = "rgba(0,0,0,0.38)";
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Cloth cover in this entry's colour with gilt lettering. */
   drawPlaceholder(): void {
-    const { ctx, w, h, mat, spec } = this;
+    const { ctx, spec } = this;
+    const { x, y, iw, ih } = this.window;
     this.drawMat();
-    const x = mat, y = mat, iw = w - 2 * mat, ih = h - 2 * mat;
-    const cloth = darken(spec.tint, 0.35);
-    ctx.fillStyle = rgbToHex(cloth);
-    ctx.fillRect(x, y, iw, ih);
-    // Cloth weave
-    const rnd = mulberry32(13);
-    for (let i = 0; i < 5000; i++) {
-      ctx.fillStyle = rnd() > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.08)";
-      ctx.fillRect(x + rnd() * iw, y + rnd() * ih, 1.5, 1.5);
-    }
-    // Spine shadow down the left, and a lighter fore-edge.
-    const sg = ctx.createLinearGradient(x, 0, x + 60, 0);
-    sg.addColorStop(0, "rgba(0,0,0,0.45)");
-    sg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = sg;
-    ctx.fillRect(x, y, 60, ih);
-
-    // Gilt rules and lettering.
-    const gilt = rgbToHex(lighten(spec.tint, 0.55));
-    ctx.strokeStyle = gilt;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x + 34, y + 34, iw - 68, ih - 68);
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + 42, y + 42, iw - 84, ih - 84);
-
-    ctx.fillStyle = gilt;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const titleFont = (px: number) => `600 ${px}px ${spec.family}`;
-    const title = fitText(ctx, spec.title, titleFont, 56, 30, iw - 120, 4);
-    const lh = title.px * 1.15;
-    let ty = y + ih * 0.42 - ((title.lines.length - 1) * lh) / 2;
-    ctx.font = titleFont(title.px);
-    for (const line of title.lines) {
-      ctx.fillText(line, x + iw / 2, ty);
-      ty += lh;
-    }
-    if (spec.author) {
-      const af = (px: number) => `italic 400 ${px}px ${spec.family}`;
-      const author = fitText(ctx, spec.author, af, 30, 20, iw - 120, 2);
-      ctx.font = af(author.px);
-      let ay = ty + 18;
-      for (const line of author.lines) {
-        ctx.fillText(line, x + iw / 2, ay);
-        ay += author.px * 1.25;
+    this.inWindow(() => {
+      const cloth = darken(spec.tint, 0.35);
+      ctx.fillStyle = rgbToHex(cloth);
+      ctx.fillRect(x, y, iw, ih);
+      // Cloth weave
+      const rnd = mulberry32(13);
+      for (let i = 0; i < 5000; i++) {
+        ctx.fillStyle = rnd() > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.08)";
+        ctx.fillRect(x + rnd() * iw, y + rnd() * ih, 1.5, 1.5);
       }
-    }
-    // Small ornament
-    ctx.beginPath();
-    ctx.arc(x + iw / 2, y + ih * 0.8, 5, 0, Math.PI * 2);
-    ctx.fill();
+      // Spine shadow down the left.
+      const sg = ctx.createLinearGradient(x, 0, x + 60, 0);
+      sg.addColorStop(0, "rgba(0,0,0,0.45)");
+      sg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(x, y, 60, ih);
+
+      // Gilt rules and lettering. The rules follow the window's shape.
+      const gilt = rgbToHex(lighten(spec.tint, 0.55));
+      ctx.strokeStyle = gilt;
+      const inset = (d: number) => {
+        ctx.beginPath();
+        if (spec.arched) {
+          const r = iw / 2 - d;
+          ctx.moveTo(x + d, y + ih - d);
+          ctx.lineTo(x + d, y + iw / 2);
+          ctx.arc(x + iw / 2, y + iw / 2, r, Math.PI, 0, false);
+          ctx.lineTo(x + iw - d, y + ih - d);
+          ctx.closePath();
+        } else {
+          ctx.rect(x + d, y + d, iw - 2 * d, ih - 2 * d);
+        }
+      };
+      ctx.lineWidth = 3;
+      inset(34);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      inset(42);
+      ctx.stroke();
+
+      ctx.fillStyle = gilt;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const titleFont = (px: number) => `600 ${px}px ${spec.family}`;
+      const title = fitText(ctx, spec.title, titleFont, 64, 34, iw - 120, 4);
+      const lh = title.px * 1.12;
+      let ty = y + ih * 0.44 - ((title.lines.length - 1) * lh) / 2;
+      ctx.font = titleFont(title.px);
+      for (const line of title.lines) {
+        ctx.fillText(line, x + iw / 2, ty);
+        ty += lh;
+      }
+      if (spec.author) {
+        const af = (px: number) => `italic 400 ${px}px ${spec.family}`;
+        const author = fitText(ctx, spec.author, af, 36, 24, iw - 120, 2);
+        ctx.font = af(author.px);
+        let ay = ty + 20;
+        for (const line of author.lines) {
+          ctx.fillText(line, x + iw / 2, ay);
+          ay += author.px * 1.25;
+        }
+      }
+      // Small ornament
+      ctx.beginPath();
+      ctx.arc(x + iw / 2, y + ih * 0.82, 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 
   /** Replace the placeholder with a real cover, fitted inside the window. */
   drawImage(img: HTMLImageElement): void {
-    const { ctx, w, h, mat, spec } = this;
+    const { ctx, spec } = this;
+    const { x, y, iw, ih } = this.window;
     this.drawMat();
-    const x = mat, y = mat, iw = w - 2 * mat, ih = h - 2 * mat;
-    ctx.fillStyle = rgbToHex(darken(spec.tint, 0.6));
-    ctx.fillRect(x, y, iw, ih);
-    const scale = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
-    const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-    const dx = x + (iw - dw) / 2, dy = y + (ih - dh) / 2;
-    ctx.drawImage(img, dx, dy, dw, dh);
-    // A whisper of gloss so it reads as a print under glass.
-    const gl = ctx.createLinearGradient(x, y, x + iw, y + ih);
-    gl.addColorStop(0, "rgba(255,255,255,0.08)");
-    gl.addColorStop(0.5, "rgba(255,255,255,0)");
-    gl.addColorStop(1, "rgba(255,255,255,0.04)");
-    ctx.fillStyle = gl;
-    ctx.fillRect(x, y, iw, ih);
+    this.inWindow(() => {
+      ctx.fillStyle = rgbToHex(darken(spec.tint, 0.6));
+      ctx.fillRect(x, y, iw, ih);
+      const scale = Math.min(iw / img.naturalWidth, ih / img.naturalHeight);
+      const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+      const dx = x + (iw - dw) / 2, dy = y + (ih - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      // A whisper of gloss so it reads as a print under glass.
+      const gl = ctx.createLinearGradient(x, y, x + iw, y + ih);
+      gl.addColorStop(0, "rgba(255,255,255,0.08)");
+      gl.addColorStop(0.5, "rgba(255,255,255,0)");
+      gl.addColorStop(1, "rgba(255,255,255,0.04)");
+      ctx.fillStyle = gl;
+      ctx.fillRect(x, y, iw, ih);
+    });
   }
 }
 

@@ -90,11 +90,13 @@ const payload = JSON.stringify(
 <p class="corridor-help font-ui text-muted-foreground" data-corridor-help>
   <span class="corridor-help-keys">
     Walk with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow
-    keys · drag to look around · click a frame to open it on Goodreads
+    keys · drag to look around · stand on the walkway and it carries you ·
+    click a frame to open it on Goodreads
   </span>
   <span class="corridor-help-touch">
-    Drag in the lower left to walk · drag anywhere else to look around · tap
-    a frame to open it on Goodreads
+    Drag in the lower left to walk · drag anywhere else to look around ·
+    stand on the walkway and it carries you · tap a frame to open it on
+    Goodreads
   </span>
 </p>
 
@@ -236,18 +238,21 @@ const payload = JSON.stringify(
   }
 
   /* ---- the aimed book -------------------------------------------------- */
+  /* Top-centre, out of the way of the plaque that sits under every frame
+     when you face it, and of the stick and look-drag on touch screens. */
   .corridor-label {
     position: absolute;
     left: 50%;
-    bottom: 1.1rem;
+    top: 0.85rem;
     transform: translateX(-50%);
     z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.1rem;
-    max-width: min(80%, 26rem);
-    padding: 0.55rem 1rem 0.6rem;
+    /* Leaves the fullscreen button's corner clear at narrow desktop widths. */
+    max-width: min(100% - 10rem, 30rem);
+    padding: 0.7rem 1.25rem 0.75rem;
     border-radius: 0.35rem;
     background: rgb(22 15 10 / 0.62);
     color: #f5eee4;
@@ -261,25 +266,39 @@ const payload = JSON.stringify(
   .corridor-label:hover .corridor-label-cta {
     text-decoration: underline;
   }
-  /* On a touch screen the bottom belongs to the stick and the look-drag, so
-     the caption hangs at the top instead, like a wall label. */
+  /* On a touch screen the caption becomes a full-width band, like a wall
+     label, and the fullscreen button moves out of its way. Type stays large:
+     the plaque is small on a phone, and this is where the title gets read. */
   .corridor[data-touch] .corridor-label {
-    bottom: auto;
-    top: 0.85rem;
-    max-width: min(100% - 8rem, 22rem);
-    padding-block: 0.45rem 0.5rem;
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    max-width: none;
+    border-radius: 0;
+    padding: 0.7rem 1rem 0.8rem;
   }
   .corridor[data-touch] .corridor-label-title {
+    font-size: 1.35rem;
+  }
+  .corridor[data-touch] .corridor-label-meta {
     font-size: 0.95rem;
+  }
+  .corridor[data-touch] .corridor-fs {
+    top: auto;
+    bottom: 0.75rem;
+    right: 0.75rem;
   }
   .corridor-label-title {
     font-family: var(--font-newsreader);
     font-weight: 600;
-    font-size: 1.05rem;
+    font-size: 1.4rem;
+    line-height: 1.2;
     text-wrap: balance;
   }
   .corridor-label-meta {
-    font-size: 0.78rem;
+    margin-top: 0.15rem;
+    font-size: 0.95rem;
     color: #d9cdbd;
   }
   .corridor-label-meta:empty {
