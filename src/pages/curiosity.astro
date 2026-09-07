@@ -3,7 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Main from "@/components/Main.astro";
 import Footer from "@/components/Footer.astro";
-import CuriosityTimeline from "@/components/CuriosityTimeline.astro";
+import CuriosityCorridor from "@/components/CuriosityCorridor.astro";
 import { CURIOSITY_TIMELINE } from "@/data/curiosity";
 import config from "@/config";
 ---
@@ -15,7 +15,7 @@ import config from "@/config";
     pageTitle="Curiosity Timeline"
     pageDesc="A non-exhaustive list of books that reflect some of my curiosities at different points in my life. Inclusion in the list is neither agreement nor endorsement. Except for Gene Wolfe, in which case my highest recommendation is implicit."
   >
-    <CuriosityTimeline entries={CURIOSITY_TIMELINE} />
+    <CuriosityCorridor entries={CURIOSITY_TIMELINE} />
   </Main>
 
   <Footer />
