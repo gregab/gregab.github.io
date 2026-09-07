@@ -55,8 +55,8 @@ portable markdown.
 
 ## What is public right now
 
-The site is deliberately minimal: the homepage bio, `/curiosity` and
-`/resources`.
+The site is deliberately minimal: the homepage bio, `/curiosity` (the reading
+list as a walkable 3D corridor) and `/resources`.
 Most of the rest is **parked, not deleted** — Greg wants to publish those sections
 when he has real content, so the code and schemas all still exist.
 
@@ -107,6 +107,20 @@ npm run build   # astro check && astro build && pagefind --site dist
   renumbering every file. The **`resources` skill**
   (`.claude/skills/resources/SKILL.md`) has the whole pipeline from a staged
   Obsidian note to a deployed page — read it before touching `/resources`.
+- **The curiosity timeline is a 3D corridor.** `/curiosity` renders
+  `src/components/CuriosityCorridor.astro`, a first-person gallery built with
+  three.js in `src/scripts/corridor/` (`corridor.ts` scene, `input.ts` keys /
+  drag / touch stick, `textures.ts` procedural surfaces and plaques,
+  `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
+  the same order: entry 0 hangs first, on the left, and they alternate walls.
+  The old 2D `CuriosityTimeline.astro` is not parked — it is the fallback,
+  swapped in from a `<template>` when WebGL is missing (iOS Lockdown Mode,
+  some corporate browsers) and served inside `<noscript>`. Keep both working.
+  three.js loads as its own chunk after page-load (~150 KB gzipped); don't
+  import it anywhere else. Headless Chromium + Playwright with
+  `--use-angle=swiftshader` renders it fine for screenshots (at ~2 fps, so
+  set position through the `corridor.state` handle on the root element
+  rather than holding keys).
 - **Curiosity timeline covers** come from Open Library. `npm run covers` resolves
   them once, offline, and writes `cover:` URLs into `src/data/curiosity.ts`;
   `-- --check` reports what's missing and `-- --force` re-resolves everything.
@@ -119,6 +133,13 @@ npm run build   # astro check && astro build && pagefind --site dist
   Open Library matches authors individually, so "Gilles Deleuze and Félix
   Guattari" matches nothing and gets narrowed to the first name before it is
   sent. That bug cost six entries their covers.
+  The corridor and the 2D timeline share one browser cache
+  (`src/lib/coverCache.ts`) and one resolver for the list
+  (`src/scripts/timelineCovers.ts`); the corridor requests the `-L` size and
+  loads nearest-first, only within reach, so bandwidth scales with how far a
+  visitor walks. Cover images are drawn into a WebGL texture, which needs
+  CORS; if Open Library ever stops sending it, the cloth-bound placeholder
+  (title stamped in gilt, in the entry's arc colour) is what shows.
 - **Substack** posts are a hand-maintained list in `src/data/substack.ts`. No RSS fetch.
   It's rendered on `/writing` alongside the essay list.
 - **Theme palette** (light and dark) lives in `src/styles/theme.css` as CSS custom
@@ -167,6 +188,18 @@ npm run build   # astro check && astro build && pagefind --site dist
   connector and cover strip match the line beside it. It ends on `--accent`, so
   the arc lands on a colour the palette already owns. Titles there still take
   the amber `mark-hover` like every other list link.
+- **The corridor spends no new colour either.** Walls are `--muted`, the far
+  end fogs into a shade below it, the light over each frame samples the same
+  five-stop arc (`--ct-tint-1..5`, mixed in oklab to match the CSS), and both
+  themes are read live from the tokens — toggling re-paints the scene. Gilt,
+  walnut and brass are materials, not palette. Text in the scene is metadata
+  only: title and author on the plaque and in the caption pill; the help line
+  under the canvas is chrome. Frames are all one size on purpose — a gallery
+  hang, not a size-means-importance chart. Controls follow convention and
+  should stay conventional: W A S D / arrows on a keyboard (arrows turn, A/D
+  strafe), drag to look, a floating stick in the lower-left on touch with
+  drag-to-look elsewhere. The caption pill sits at the bottom on desktop and
+  the top on touch, because the bottom is the stick's.
 - **That spine is a double-headed arrow that fades out at both ends**, and the
   arrowheads deliberately sit *inside* the fade rather than at the tips: the
   line runs past them and dissolves. The list has no first cause and no last
