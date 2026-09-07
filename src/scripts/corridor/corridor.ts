@@ -765,8 +765,9 @@ export class Corridor {
     if (Math.abs(this.vel.x) < 0.005) this.vel.x = 0;
     if (Math.abs(this.vel.z) < 0.005) this.vel.z = 0;
 
-    // The walkway carries whoever stands on it, walking or not.
-    const onBelt = this.walkway.carries(this.pos.x, this.pos.z);
+    // The walkway carries whoever stands on it, walking or not — unless the
+    // visitor asked for less motion, in which case it is only a floor.
+    const onBelt = !this.reducedMotion && this.walkway.carries(this.pos.x, this.pos.z);
     const moving = this.vel.x !== 0 || this.vel.z !== 0 || onBelt;
     if (moving) {
       this.pos.x += this.vel.x * dt;

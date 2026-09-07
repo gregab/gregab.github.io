@@ -250,7 +250,8 @@ const payload = JSON.stringify(
     flex-direction: column;
     align-items: center;
     gap: 0.1rem;
-    max-width: min(70%, 30rem);
+    /* Leaves the fullscreen button's corner clear at narrow desktop widths. */
+    max-width: min(100% - 10rem, 30rem);
     padding: 0.7rem 1.25rem 0.75rem;
     border-radius: 0.35rem;
     background: rgb(22 15 10 / 0.62);
