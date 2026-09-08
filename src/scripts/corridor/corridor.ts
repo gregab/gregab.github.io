@@ -11,14 +11,16 @@
   Performance notes, since phones are the target:
   - Every moulding part is an InstancedMesh shared by all frames of its
     style (see frames.ts); per-frame draw calls are the art plane, the
-    plaque and an invisible hit plane.
-  - A moving walkway runs down the middle. Stand on it and it carries you
-    toward the far end; its tread animates, so the scene renders at a low
-    idle rate rather than not at all.
+    plaque and two invisible hit planes. The plants, benches and runner are
+    instanced across the whole hall (see props.ts).
   - Real lights are a lantern on the camera plus a small pool of spotlights
-    that hop to the nearest frames. The glow you see on far walls and the
-    floor is unlit additive decals, which cost nothing.
-  - Nothing renders while nothing moves.
+    that hop to the nearest frames. They are deliberately dim: the pictures
+    are the brightest thing in the hall and blowing them out is the failure
+    mode. The glow you see on far walls and the floor is unlit additive
+    decals, which cost nothing.
+  - Nothing renders while nothing moves. The moving walkway (SHOW_WALKWAY,
+    off) is the one thing that animates at rest, so with it off the scene
+    renders only on input.
   - Covers load nearest-first, only within reach, in the large size, so
     walking the whole hall costs bandwidth in proportion to how far you go.
 */
@@ -33,6 +35,7 @@ import {
   writeCoverCache,
 } from "@/lib/coverCache";
 import { Controls } from "./input";
+import { Props } from "./props";
 import { Walkway } from "./walkway";
 import {
   type FrameStyle,
@@ -52,6 +55,7 @@ import {
 } from "./palette";
 import {
   Art,
+  ceilingCanvas,
   coneCanvas,
   glowCanvas,
   patinaCanvas,
@@ -81,11 +85,23 @@ const FRAME_W = 0.66; // the art
 const FRAME_H = 0.99;
 const BORDER = 0.11; // moulding width
 const FRAME_Y = 1.62; // centre height
-const PLAQUE_W = 0.62; // wide enough to read from the middle of the hall
-const PLAQUE_H = 0.17;
-const PLAQUE_Y = FRAME_Y - FRAME_H / 2 - BORDER - 0.06 - PLAQUE_H / 2;
+const MOULDING = 0.47; // half-width of the widest moulding, from the centre
+// The label hangs beside the picture, museum-fashion, rather than under it:
+// off to the reader's right, and at a height you read standing up.
+const PLAQUE_W = 0.5;
+const PLAQUE_H = 0.3;
+const PLAQUE_Y = 1.45;
+const PLAQUE_X = MOULDING + 0.14 + PLAQUE_W / 2;
 const BELT_SPEED = 1.0; // m/s; an airport walkway runs about 0.7
 const FIXTURE_IN = 0.55; // ceiling spot's distance from the wall
+const BAY = SPACING; // one ceiling coffer per frame
+
+/*
+  The moving walkway is built and stepped only when this is on. It is off
+  for now; walkway.ts and everything that reads this flag stay in place so
+  turning it back on is a one-word change.
+*/
+const SHOW_WALKWAY = false;
 
 const WALK = 2.5; // m/s
 const RUNSPEED = 4.4;
@@ -107,6 +123,7 @@ interface FrameRec {
   art: Art;
   artTex: THREE.CanvasTexture;
   hit: THREE.Mesh;
+  plaqueTex: THREE.CanvasTexture;
   centre: THREE.Vector3;
   coverState: "idle" | "loading" | "done" | "failed";
   arched: boolean;
@@ -169,7 +186,9 @@ export class Corridor {
   private poolMat!: THREE.MeshBasicMaterial;
   private discMat!: THREE.MeshBasicMaterial;
   private hemi!: THREE.HemisphereLight;
-  private walkway!: Walkway;
+  private ceilGeo!: THREE.PlaneGeometry;
+  private walkway: Walkway | null = null;
+  private props!: Props;
   private lastRenderAt = 0;
   private lantern!: THREE.PointLight;
   private spots: THREE.SpotLight[] = [];
@@ -226,6 +245,7 @@ export class Corridor {
     this.buildHall();
     this.buildWalkway();
     this.buildFrames();
+    this.buildProps();
     this.buildLights();
     this.applyPalette();
 
@@ -332,7 +352,22 @@ export class Corridor {
       roughness: 0.75,
       metalness: 0.05,
     });
-    this.ceilMat = new THREE.MeshStandardMaterial({ roughness: 1 });
+    // The ceiling is painted: a coffer per bay with a star medallion, drawn
+    // in greys and multiplied by a vertex colour that walks the same
+    // five-stop arc as the lights below it (see paintCeiling).
+    const ceilTex = new THREE.CanvasTexture(ceilingCanvas());
+    ceilTex.wrapS = ceilTex.wrapT = THREE.RepeatWrapping;
+    ceilTex.colorSpace = THREE.SRGBColorSpace;
+    ceilTex.anisotropy = this.plasterTex.anisotropy;
+    ceilTex.repeat.set(2, L / BAY);
+    // Land a coffer's centre on each frame rather than its rib.
+    ceilTex.offset.y = 0.5 - ((((-this.zMin) / BAY) % 1) + 1) % 1;
+    this.ceilMat = new THREE.MeshStandardMaterial({
+      map: ceilTex,
+      roughness: 1,
+      metalness: 0,
+      vertexColors: true,
+    });
     this.trimMat = new THREE.MeshStandardMaterial({ roughness: 0.6 });
     this.crownMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
     this.doorMat = new THREE.MeshBasicMaterial();
@@ -344,8 +379,7 @@ export class Corridor {
     const right = new THREE.Mesh(wallGeo, this.wallMat);
     right.position.set(HALL_W / 2, HALL_H / 2, zc);
     right.rotation.y = -Math.PI / 2;
-    // Repeat along the wall; a fresh texture object per axis is not needed,
-    // the repeat is set once for the wall and reused by the ceiling.
+    // Repeat along the wall. One tile is 2 m, both axes.
     this.plasterTex.repeat.set(L / 2, HALL_H / 2);
 
     const floorGeo = new THREE.PlaneGeometry(HALL_W, L);
@@ -353,7 +387,18 @@ export class Corridor {
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0, zc);
 
-    const ceil = new THREE.Mesh(floorGeo, this.ceilMat);
+    // One strip of vertices per half-bay, which is as fine as the arc needs
+    // to crossfade smoothly overhead.
+    const bays = Math.max(2, Math.ceil(L / (BAY / 2)));
+    this.ceilGeo = new THREE.PlaneGeometry(HALL_W, L, 1, bays);
+    this.ceilGeo.setAttribute(
+      "color",
+      new THREE.BufferAttribute(
+        new Float32Array(this.ceilGeo.attributes.position.count * 3),
+        3
+      )
+    );
+    const ceil = new THREE.Mesh(this.ceilGeo, this.ceilMat);
     ceil.rotation.x = Math.PI / 2;
     ceil.position.set(0, HALL_H, zc);
 
@@ -406,6 +451,7 @@ export class Corridor {
   }
 
   private buildWalkway(): void {
+    if (!SHOW_WALKWAY) return;
     const n = this.entries.length;
     // From just before the first frame to just past the last, so riding it
     // end to end passes every book and leaves you facing the far doorway.
@@ -415,6 +461,37 @@ export class Corridor {
       speed: BELT_SPEED,
     });
     this.scene.add(this.walkway.group);
+  }
+
+  /**
+   * Plants, benches and the runner. They go on the wall opposite a frame,
+   * where there is nothing hanging, spaced so a walk down the hall passes a
+   * few of each rather than a row of the same thing.
+   */
+  private buildProps(): void {
+    const plants: { side: -1 | 1; z: number; variant: number }[] = [];
+    const benches: { side: -1 | 1; z: number; variant: number }[] = [];
+    this.frames.forEach((f, i) => {
+      const facing: -1 | 1 = f.side === -1 ? 1 : -1;
+      if (i % 4 === 1) plants.push({ side: facing, z: f.z, variant: i });
+      else if (i % 8 === 4) benches.push({ side: facing, z: f.z, variant: i });
+    });
+    // A plant at each end of the hall too, flanking the doorways.
+    for (const z of [this.zMax - 1.5, this.zMin + 1.5]) {
+      plants.push({ side: -1, z, variant: 0 }, { side: 1, z, variant: 1 });
+    }
+
+    this.props = new Props({
+      hallWidth: HALL_W,
+      plants,
+      benches,
+      runner: {
+        zStart: this.zMax - 0.7,
+        zEnd: this.zMin + 0.7,
+        width: 1.6,
+      },
+    });
+    this.scene.add(this.props.group);
   }
 
   private buildFrames(): void {
@@ -468,11 +545,13 @@ export class Corridor {
     this.cones.renderOrder = 2;
     this.pools.renderOrder = 2;
 
+    // Two targets per frame: the picture, and the label beside it.
     const hitGeo = new THREE.PlaneGeometry(
       FRAME_W + 2 * BORDER + 0.16,
-      FRAME_H + 2 * BORDER + 0.6
+      FRAME_H + 2 * BORDER + 0.16
     );
-    const plaqueGeo = new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, 0.012);
+    const plaqueHitGeo = new THREE.PlaneGeometry(PLAQUE_W + 0.08, PLAQUE_H + 0.08);
+    const plaqueGeo = new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, 0.014);
     const artGeo = new THREE.PlaneGeometry(FRAME_W + 0.02, FRAME_H + 0.02);
 
     const m = new THREE.Matrix4();
@@ -533,12 +612,16 @@ export class Corridor {
       const artTex = new THREE.CanvasTexture(art.canvas);
       artTex.colorSpace = THREE.SRGBColorSpace;
       artTex.anisotropy = this.plasterTex.anisotropy;
+      // A picture reflects the light on it and no more. The emissive map is
+      // a floor, not a glow: enough that a cover is legible in an unlit
+      // stretch of hall, small enough that the lit ones don't blow out.
       const artMat = new THREE.MeshStandardMaterial({
         map: artTex,
         emissiveMap: artTex,
         emissive: new THREE.Color(1, 1, 1),
-        emissiveIntensity: 0.28,
-        roughness: 0.5,
+        emissiveIntensity: 0.07,
+        envMapIntensity: 0.3,
+        roughness: 0.62,
         metalness: 0,
       });
       const artMesh = new THREE.Mesh(artGeo, artMat);
@@ -559,17 +642,23 @@ export class Corridor {
         metalness: 0.6,
         roughness: 0.32,
       });
+      // Beside the picture, on the side that falls to your right as you
+      // face it — the same hand a museum hangs its label on.
       const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-      plaque.position.set(0, PLAQUE_Y - FRAME_Y, 0.006);
+      plaque.position.set(PLAQUE_X, PLAQUE_Y - FRAME_Y, 0.007);
       group.add(plaque);
 
-      // Invisible hit plane over frame + plaque
+      // Invisible hit planes over the picture and over the label.
       const hit = new THREE.Mesh(hitGeo);
       hit.visible = false;
-      hit.position.set(0, -0.22, 0.06);
+      hit.position.set(0, 0, 0.06);
       hit.userData.index = i;
-      group.add(hit);
-      this.hits.push(hit);
+      const plaqueHit = new THREE.Mesh(plaqueHitGeo);
+      plaqueHit.visible = false;
+      plaqueHit.position.set(PLAQUE_X, PLAQUE_Y - FRAME_Y, 0.02);
+      plaqueHit.userData.index = i;
+      group.add(hit, plaqueHit);
+      this.hits.push(hit, plaqueHit);
 
       this.scene.add(group);
       this.frames.push({
@@ -582,6 +671,7 @@ export class Corridor {
         art,
         artTex,
         hit,
+        plaqueTex,
         centre: new THREE.Vector3(side * HALL_W / 2, FRAME_Y, z),
         coverState: "idle",
         arched: style.arched,
@@ -609,12 +699,15 @@ export class Corridor {
     this.hemi = new THREE.HemisphereLight(0xfff1dc, 0x2a1d14, 0.5);
     this.scene.add(this.hemi);
 
-    this.lantern = new THREE.PointLight(0xffe2b8, 16, 0, 2);
+    // A lantern on the camera, so you are never in the dark — but a weak
+    // one with a short reach. It faces the pictures head-on, which is the
+    // worst angle for them: turned up it flattens every cover it passes.
+    this.lantern = new THREE.PointLight(0xffe2b8, 4, 7, 2);
     this.scene.add(this.lantern);
 
     const count = this.coarse ? NEAR_SPOTS_MOBILE : NEAR_SPOTS_DESKTOP;
     for (let i = 0; i < count; i++) {
-      const spot = new THREE.SpotLight(0xffffff, 30, 7, 0.62, 0.7, 1.6);
+      const spot = new THREE.SpotLight(0xffffff, 20, 8, 0.7, 0.85, 1.7);
       spot.target = new THREE.Object3D();
       this.scene.add(spot, spot.target);
       this.spots.push(spot);
@@ -647,16 +740,20 @@ export class Corridor {
     const fogColor = toColor(dark ? darken(bg, 0.15) : darken(muted, 0.14));
     this.scene.fog = new THREE.Fog(fogColor, dark ? 7 : 9, dark ? 34 : 40);
     this.scene.background = fogColor;
-    this.renderer.toneMappingExposure = dark ? 1.0 : 1.05;
-    this.scene.environmentIntensity = dark ? 0.32 : 0.62;
+    this.renderer.toneMappingExposure = dark ? 0.95 : 1.0;
+    // Enough ambience to see by, not enough to add to what is already
+    // falling on the pictures from the fixture above each of them.
+    this.scene.environmentIntensity = dark ? 0.26 : 0.34;
 
-    this.hemi.intensity = dark ? 0.35 : 0.75;
+    this.hemi.intensity = dark ? 0.46 : 0.6;
     this.hemi.color.set(dark ? 0xf6e6d2 : 0xfff5e6);
-    this.lantern.intensity = dark ? 14 : 10;
+    this.lantern.intensity = dark ? 4.5 : 3;
 
     this.coneMat.opacity = dark ? 0.85 : 0.55;
     this.poolMat.opacity = dark ? 0.7 : 0.45;
-    this.walkway.setTheme(dark);
+    this.walkway?.setTheme(dark);
+    this.props.setTheme(dark);
+    this.paintCeiling();
 
     // Per-frame light colours: the arc, lifted toward warm white so it
     // reads as light on plaster rather than paint.
@@ -677,6 +774,33 @@ export class Corridor {
     this.needsRender = true;
   }
 
+  /**
+   * Wash the ceiling with the arc. The pattern itself is greyscale; this
+   * writes a vertex colour per strip so the coffers overhead crossfade gold
+   * → slate in step with the lights on the walls below.
+   */
+  private paintCeiling(): void {
+    const dark = this.palette.dark;
+    const span = Math.max(1e-6, (this.frames.length - 1) * SPACING);
+    const zc = (this.zMax + this.zMin) / 2;
+    const pos = this.ceilGeo.attributes.position;
+    const col = this.ceilGeo.attributes.color as THREE.BufferAttribute;
+    // A colour attribute is read as-is, in the renderer's linear working
+    // space, so the arc's sRGB values have to be converted going in — pass
+    // them straight through and the wash comes out grey.
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      // The plane is rotated onto the ceiling, so its local +y is world +z.
+      const z = zc + pos.getY(i);
+      const t = Math.min(1, Math.max(0, -z / span));
+      const wash = lighten(tintAt(this.palette, t), dark ? 0.44 : 0.58);
+      c.setRGB(wash[0], wash[1], wash[2], THREE.SRGBColorSpace);
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    col.needsUpdate = true;
+    this.ceilMat.color.set(dark ? "#8d8177" : "#ffffff");
+  }
+
   /** Redraw plaques and placeholders (after the webfont arrives). */
   private redrawText(): void {
     for (const f of this.frames) {
@@ -685,15 +809,11 @@ export class Corridor {
         f.artTex.image = f.art.canvas;
         f.artTex.needsUpdate = true;
       }
-      const plaque = f.group.children[1] as THREE.Mesh;
-      const mat = plaque.material as THREE.MeshStandardMaterial;
-      if (mat.map) {
-        mat.map.image = plaqueCanvas(
-          { title: f.entry.title, author: f.entry.author, series: f.entry.series },
-          this.family
-        );
-        mat.map.needsUpdate = true;
-      }
+      f.plaqueTex.image = plaqueCanvas(
+        { title: f.entry.title, author: f.entry.author, series: f.entry.series },
+        this.family
+      );
+      f.plaqueTex.needsUpdate = true;
     }
     this.needsRender = true;
   }
@@ -722,13 +842,16 @@ export class Corridor {
     this.updateAim();
     this.pumpCovers();
 
-    // Idle, the only thing moving is the walkway's tread, and it does not
-    // need 60 frames a second — or any, for a visitor who asked for less
-    // motion.
-    const idleTick = !this.reducedMotion && now - this.lastRenderAt >= 1000 / 24;
+    // The walkway's tread is the only thing that moves at rest, and it does
+    // not need 60 frames a second — or any, for a visitor who asked for less
+    // motion. With the walkway off, nothing idles: no input, no frame.
+    const idleTick =
+      this.walkway !== null &&
+      !this.reducedMotion &&
+      now - this.lastRenderAt >= 1000 / 24;
     if (moved || this.needsRender || idleTick) {
       const t0 = performance.now();
-      this.walkway.update(Math.min(0.1, (now - this.lastRenderAt) / 1000));
+      this.walkway?.update(Math.min(0.1, (now - this.lastRenderAt) / 1000));
       this.lastRenderAt = now;
       this.renderer.render(this.scene, this.camera);
       this.needsRender = false;
@@ -767,12 +890,13 @@ export class Corridor {
 
     // The walkway carries whoever stands on it, walking or not — unless the
     // visitor asked for less motion, in which case it is only a floor.
-    const onBelt = !this.reducedMotion && this.walkway.carries(this.pos.x, this.pos.z);
+    const onBelt =
+      !this.reducedMotion && (this.walkway?.carries(this.pos.x, this.pos.z) ?? false);
     const moving = this.vel.x !== 0 || this.vel.z !== 0 || onBelt;
     if (moving) {
       this.pos.x += this.vel.x * dt;
       this.pos.z += this.vel.z * dt;
-      if (onBelt) this.pos.z -= this.walkway.speed * dt;
+      if (onBelt && this.walkway) this.pos.z -= this.walkway.speed * dt;
       const xLimit = HALL_W / 2 - 0.42;
       this.pos.x = Math.max(-xLimit, Math.min(xLimit, this.pos.x));
       this.pos.z = Math.max(this.zMin + 0.9, Math.min(this.zMax - 0.9, this.pos.z));
@@ -811,7 +935,7 @@ export class Corridor {
         spot.intensity = 0;
         return;
       }
-      spot.intensity = this.palette.dark ? 34 : 22;
+      spot.intensity = this.palette.dark ? 20 : 15;
       spot.color.set(toColor(lighten(f.tint, 0.55)));
       spot.position.set(f.side * (HALL_W / 2 - FIXTURE_IN), HALL_H - 0.15, f.z);
       spot.target.position.set(f.side * HALL_W / 2, FRAME_Y - 0.1, f.z);
@@ -1027,7 +1151,8 @@ export class Corridor {
         mat.dispose();
       }
     });
-    this.walkway.dispose();
+    this.walkway?.dispose();
+    this.props.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
   }
