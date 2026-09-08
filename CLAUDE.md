@@ -205,12 +205,20 @@ npm run build   # astro check && astro build && pagefind --site dist
   per frame. Each book's label hangs *beside* its frame, on the wall to your
   right as you face it, the way a museum hangs one — big enough to read at
   1.45 m, which is a height you read standing up rather than stooping. The
-  ceiling is the one place the arc runs overhead: a coffer per bay with a
-  star medallion, drawn greyscale in `textures.ts` and multiplied by a
-  vertex colour that crossfades the same five stops, so it is the arc again
-  and not a sixth colour. Note a colour *attribute* is read as linear, so
-  the sRGB tint has to be converted going in — pass it straight through and
-  the whole ceiling comes out grey. Plants, benches and the runner
+  ceiling carries the arc overhead, but as ornament rather than as a wash:
+  one painted coffer per bay, the same scheme the length of the hall, with
+  all five stops inside every coffer (`ceilingCanvas` in `textures.ts`).
+  The assignment is deliberate and worth keeping — the star's eight points
+  alternate the two ends of the arc, gold against slate, because warm
+  against cool is what makes a geometric star legible from 3.5 m below; its
+  body takes violet and its boss terracotta so no two touching fields share
+  a hue; rose goes to the smaller medallions over the rib crossings so they
+  read as their own rhythm. Ground and ribs stay plaster — architecture,
+  not colour — and gilt is rationed to the hairlines and the four lozenges.
+  Light theme is cream ground with ink outlines; dark theme flips it to a
+  deep ground with a gilt hairline, because a dark painted ceiling reads by
+  its lines catching the light. It was a per-bay crossfade before, and read
+  as beige at the gold end, which is the end everyone sees first. Plants, benches and the runner
   (`props.ts`) are furniture in the same sense gilt and brass are
   materials. **Both ends open onto sky** (`ends.ts`) rather than closing on
   a wall — an arched opening with a stone surround and a balustrade, and

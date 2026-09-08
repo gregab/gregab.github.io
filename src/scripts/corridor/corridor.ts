@@ -186,7 +186,7 @@ export class Corridor {
   private poolMat!: THREE.MeshBasicMaterial;
   private discMat!: THREE.MeshBasicMaterial;
   private hemi!: THREE.HemisphereLight;
-  private ceilGeo!: THREE.PlaneGeometry;
+  private ceilTex!: THREE.CanvasTexture;
   private ends!: Ends;
   private walkway: Walkway | null = null;
   private props!: Props;
@@ -354,21 +354,20 @@ export class Corridor {
       roughness: 0.75,
       metalness: 0.05,
     });
-    // The ceiling is painted: a coffer per bay with a star medallion, drawn
-    // in greys and multiplied by a vertex colour that walks the same
-    // five-stop arc as the lights below it (see paintCeiling).
-    const ceilTex = new THREE.CanvasTexture(ceilingCanvas());
-    ceilTex.wrapS = ceilTex.wrapT = THREE.RepeatWrapping;
-    ceilTex.colorSpace = THREE.SRGBColorSpace;
-    ceilTex.anisotropy = this.plasterTex.anisotropy;
-    ceilTex.repeat.set(2, L / BAY);
+    // The ceiling is painted: one coffer per bay, the same scheme repeated
+    // the length of the hall, with the arc living in the ornament inside
+    // each coffer rather than washing the whole surface (see textures.ts).
+    this.ceilTex = new THREE.CanvasTexture(this.ceilingImage());
+    this.ceilTex.wrapS = this.ceilTex.wrapT = THREE.RepeatWrapping;
+    this.ceilTex.colorSpace = THREE.SRGBColorSpace;
+    this.ceilTex.anisotropy = this.plasterTex.anisotropy;
+    this.ceilTex.repeat.set(2, L / BAY);
     // Land a coffer's centre on each frame rather than its rib.
-    ceilTex.offset.y = 0.5 - ((((-this.zMin) / BAY) % 1) + 1) % 1;
+    this.ceilTex.offset.y = 0.5 - ((((-this.zMin) / BAY) % 1) + 1) % 1;
     this.ceilMat = new THREE.MeshStandardMaterial({
-      map: ceilTex,
+      map: this.ceilTex,
       roughness: 1,
       metalness: 0,
-      vertexColors: true,
     });
     this.trimMat = new THREE.MeshStandardMaterial({ roughness: 0.6 });
     this.crownMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
@@ -388,18 +387,7 @@ export class Corridor {
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0, zc);
 
-    // One strip of vertices per half-bay, which is as fine as the arc needs
-    // to crossfade smoothly overhead.
-    const bays = Math.max(2, Math.ceil(L / (BAY / 2)));
-    this.ceilGeo = new THREE.PlaneGeometry(HALL_W, L, 1, bays);
-    this.ceilGeo.setAttribute(
-      "color",
-      new THREE.BufferAttribute(
-        new Float32Array(this.ceilGeo.attributes.position.count * 3),
-        3
-      )
-    );
-    const ceil = new THREE.Mesh(this.ceilGeo, this.ceilMat);
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(HALL_W, L), this.ceilMat);
     ceil.rotation.x = Math.PI / 2;
     ceil.position.set(0, HALL_H, zc);
 
@@ -718,7 +706,7 @@ export class Corridor {
     this.plasterTex.needsUpdate = true;
     this.wallMat.color.set(dark ? "#d8d0c6" : "#ffffff");
 
-    this.ceilMat.color.set(toColor(dark ? darken(muted, 0.25) : lighten(muted, 0.35)));
+
     this.trimMat.color.set(dark ? "#241a13" : "#3a2a1d");
     this.crownMat.color.set(toColor(dark ? lighten(muted, 0.08) : lighten(muted, 0.5)));
     this.ends.setTheme(p);
@@ -742,7 +730,8 @@ export class Corridor {
     this.poolMat.opacity = dark ? 0.7 : 0.45;
     this.walkway?.setTheme(dark);
     this.props.setTheme(dark);
-    this.paintCeiling();
+    this.ceilTex.image = this.ceilingImage();
+    this.ceilTex.needsUpdate = true;
 
     // Per-frame light colours: the arc, lifted toward warm white so it
     // reads as light on plaster rather than paint.
@@ -763,31 +752,14 @@ export class Corridor {
     this.needsRender = true;
   }
 
-  /**
-   * Wash the ceiling with the arc. The pattern itself is greyscale; this
-   * writes a vertex colour per strip so the coffers overhead crossfade gold
-   * → slate in step with the lights on the walls below.
-   */
-  private paintCeiling(): void {
-    const dark = this.palette.dark;
-    const span = Math.max(1e-6, (this.frames.length - 1) * SPACING);
-    const zc = (this.zMax + this.zMin) / 2;
-    const pos = this.ceilGeo.attributes.position;
-    const col = this.ceilGeo.attributes.color as THREE.BufferAttribute;
-    // A colour attribute is read as-is, in the renderer's linear working
-    // space, so the arc's sRGB values have to be converted going in — pass
-    // them straight through and the wash comes out grey.
-    const c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      // The plane is rotated onto the ceiling, so its local +y is world +z.
-      const z = zc + pos.getY(i);
-      const t = Math.min(1, Math.max(0, -z / span));
-      const wash = lighten(tintAt(this.palette, t), dark ? 0.3 : 0.42);
-      c.setRGB(wash[0], wash[1], wash[2], THREE.SRGBColorSpace);
-      col.setXYZ(i, c.r, c.g, c.b);
-    }
-    col.needsUpdate = true;
-    this.ceilMat.color.set(dark ? "#8d8177" : "#ffffff");
+  /** The ceiling's paint, in the theme's terms. */
+  private ceilingImage(): HTMLCanvasElement {
+    const p = this.palette;
+    return ceilingCanvas({
+      dark: p.dark,
+      ground: hexToRgb(p.muted),
+      stops: p.tints.map(hexToRgb) as [RGB, RGB, RGB, RGB, RGB],
+    });
   }
 
   /** Redraw plaques and placeholders (after the webfont arrives). */

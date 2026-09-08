@@ -227,22 +227,57 @@ export function coneCanvas(): HTMLCanvasElement {
 
 /* ---- ceiling ----------------------------------------------------------- */
 
+export interface CeilingPaint {
+  dark: boolean;
+  /** The wall colour, --muted; the ceiling is painted a shade off it. */
+  ground: RGB;
+  /** The five-stop arc, --ct-tint-1..5. */
+  stops: [RGB, RGB, RGB, RGB, RGB];
+}
+
 /**
- * One coffer of the painted ceiling: a ribbed square with an eight-pointed
- * star medallion and a quatrefoil at each corner, drawn in greys only. The
- * scene multiplies it by a vertex colour sampled from the same five-stop arc
- * the frame lights run through, so the pattern crossfades gold → slate over
- * the length of the hall instead of introducing a sixth colour. One tile is
- * one bay, so the ribs land between the frames rather than across them.
+ * One coffer of the painted ceiling, repeated down the whole hall.
+ *
+ * The ground and the ribs are plaster — architecture, not colour — and all
+ * five stops of the arc appear as *ornament* inside every coffer, rather
+ * than one stop per bay washing the whole surface. That is how a painted
+ * ceiling actually works: one scheme, repeated, with the polychromy in the
+ * pattern.
+ *
+ * The assignment is deliberate. The star's eight points alternate the two
+ * ends of the arc, gold and slate, because warm against cool is what makes
+ * a geometric star legible from three and a half metres below. Its body
+ * takes violet and its boss terracotta, so no two touching fields share a
+ * hue, and rose goes to the smaller medallions over the rib crossings so
+ * they read as their own rhythm rather than as little copies. Gilt is a
+ * material here, the same gilt as the frames, and it is rationed to the
+ * hairlines and the four lozenges.
+ *
+ * In the light theme the ground is cream and the ornament is drawn at full
+ * strength over it, outlined in ink. In the dark theme the ground goes deep
+ * and the ornament is lifted, outlined in a gilt hairline — a dark painted
+ * ceiling reads by its lines catching the light, not by its shadows.
  */
-export function ceilingCanvas(): HTMLCanvasElement {
+export function ceilingCanvas(paint: CeilingPaint): HTMLCanvasElement {
   const S = 512;
   const c = makeCanvas(S, S);
   const ctx = ctx2d(c);
-  const g = (v: number) => `rgb(${v},${v},${v})`;
-  const ink = "rgba(58,46,34,0.5)";
+  const { dark, ground, stops } = paint;
 
-  ctx.fillStyle = g(252);
+  // Lightened toward a warm cream rather than toward white: pulled to white
+  // the ceiling goes cool and stops matching the plaster on the walls.
+  const plaster = dark
+    ? darken(ground, 0.42)
+    : mixOklab(ground, [1, 0.985, 0.945], 0.5);
+  const ribTone = dark ? darken(ground, 0.26) : lighten(ground, 0.16);
+  const ink = dark ? "rgba(236,208,150,0.34)" : "rgba(58,46,34,0.55)";
+  const gilt = dark ? "#c9a24a" : "#a9812f";
+  // On a cream ground the ornament wants to stay a touch off full strength;
+  // on a dark one it has to be lifted or it disappears into the ground.
+  const paintOf = (stop: RGB, amount = 0.12): string =>
+    rgbToHex(dark ? lighten(stop, amount + 0.14) : lighten(stop, amount));
+
+  ctx.fillStyle = rgbToHex(plaster);
   ctx.fillRect(0, 0, S, S);
 
   /** A regular polygon, or a star when `r2` is smaller than `r1`. */
@@ -261,18 +296,36 @@ export function ceilingCanvas(): HTMLCanvasElement {
     }
     ctx.closePath();
   };
-  const paint = (fill: number, line = 2.5): void => {
-    ctx.fillStyle = g(fill);
+  const paintIn = (fill: string, line = 2.5): void => {
+    ctx.fillStyle = fill;
     ctx.fill();
     ctx.strokeStyle = ink;
     ctx.lineWidth = line;
     ctx.stroke();
   };
 
+  /** One eight-pointed star drawn point by point, so they can alternate. */
+  const star = (
+    cx: number, cy: number, R: number, r: number, a: string, b: string, body: string
+  ): void => {
+    const rot = -Math.PI / 2;
+    for (let k = 0; k < 8; k++) {
+      const tip = rot + (k * Math.PI * 2) / 8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(tip) * R, cy + Math.sin(tip) * R);
+      ctx.lineTo(cx + Math.cos(tip - Math.PI / 8) * r, cy + Math.sin(tip - Math.PI / 8) * r);
+      ctx.lineTo(cx + Math.cos(tip + Math.PI / 8) * r, cy + Math.sin(tip + Math.PI / 8) * r);
+      ctx.closePath();
+      paintIn(k % 2 === 0 ? a : b, 2);
+    }
+    shape(cx, cy, r, r, 8, rot + Math.PI / 8);
+    paintIn(body, 2.5);
+  };
+
   // Ribs along the tile edges: they meet their neighbours to make one
   // continuous coffer grid down the hall.
   const rib = S * 0.058;
-  ctx.fillStyle = g(230);
+  ctx.fillStyle = rgbToHex(ribTone);
   ctx.fillRect(0, 0, S, rib);
   ctx.fillRect(0, S - rib, S, rib);
   ctx.fillRect(0, 0, rib, S);
@@ -281,34 +334,44 @@ export function ceilingCanvas(): HTMLCanvasElement {
   ctx.lineWidth = 2.5;
   ctx.strokeRect(rib, rib, S - 2 * rib, S - 2 * rib);
 
-  // A ruled border inside the coffer, with a small lozenge at each corner.
+  // A ruled border inside the coffer, with a gilt lozenge at each corner.
   const inset = S * 0.145;
-  ctx.strokeStyle = ink;
+  ctx.strokeStyle = gilt;
   ctx.lineWidth = 2;
   ctx.strokeRect(inset, inset, S - 2 * inset, S - 2 * inset);
   for (const [cx, cy] of [
     [inset, inset], [S - inset, inset], [inset, S - inset], [S - inset, S - inset],
   ]) {
     shape(cx, cy, S * 0.036, S * 0.036, 4, 0);
-    paint(178, 2);
+    paintIn(gilt, 2);
   }
 
   // Quarter medallions at the tile corners: four tiles complete each one, so
-  // the rib crossings carry a small star of their own.
+  // every rib crossing carries a rose star of its own.
   for (const [cx, cy] of [[0, 0], [S, 0], [0, S], [S, S]]) {
     shape(cx, cy, S * 0.105, S * 0.045, 8, Math.PI / 8);
-    paint(204);
+    paintIn(paintOf(stops[2], 0.2));
+    ctx.beginPath();
+    ctx.arc(cx, cy, S * 0.028, 0, Math.PI * 2);
+    paintIn(gilt, 2);
   }
 
-  // The medallion: one eight-pointed star with sharp points, an octagon
-  // inside it and a dark boss at the middle.
-  shape(S / 2, S / 2, S * 0.245, S * 0.104, 8, -Math.PI / 2);
-  paint(168, 3);
-  shape(S / 2, S / 2, S * 0.106, S * 0.106, 8, Math.PI / 8);
-  paint(206, 2.5);
+  // The medallion. Points alternate the arc's two ends; the body and the
+  // boss take the two nobody is using.
+  star(
+    S / 2, S / 2, S * 0.245, S * 0.104,
+    paintOf(stops[0], 0.08),
+    paintOf(stops[4], 0.16),
+    paintOf(stops[3], 0.2)
+  );
   ctx.beginPath();
-  ctx.arc(S / 2, S / 2, S * 0.044, 0, Math.PI * 2);
-  paint(120, 2.5);
+  ctx.arc(S / 2, S / 2, S * 0.046, 0, Math.PI * 2);
+  paintIn(paintOf(stops[1], 0.06), 2.5);
+  ctx.beginPath();
+  ctx.arc(S / 2, S / 2, S * 0.062, 0, Math.PI * 2);
+  ctx.strokeStyle = gilt;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
 
   // A whisper of plaster grain so the flat fills are not perfectly flat.
   const rnd = mulberry32(29);
