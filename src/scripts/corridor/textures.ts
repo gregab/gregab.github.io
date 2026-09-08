@@ -225,6 +225,100 @@ export function coneCanvas(): HTMLCanvasElement {
   return c;
 }
 
+/* ---- ceiling ----------------------------------------------------------- */
+
+/**
+ * One coffer of the painted ceiling: a ribbed square with an eight-pointed
+ * star medallion and a quatrefoil at each corner, drawn in greys only. The
+ * scene multiplies it by a vertex colour sampled from the same five-stop arc
+ * the frame lights run through, so the pattern crossfades gold → slate over
+ * the length of the hall instead of introducing a sixth colour. One tile is
+ * one bay, so the ribs land between the frames rather than across them.
+ */
+export function ceilingCanvas(): HTMLCanvasElement {
+  const S = 512;
+  const c = makeCanvas(S, S);
+  const ctx = ctx2d(c);
+  const g = (v: number) => `rgb(${v},${v},${v})`;
+  const ink = "rgba(58,46,34,0.5)";
+
+  ctx.fillStyle = g(252);
+  ctx.fillRect(0, 0, S, S);
+
+  /** A regular polygon, or a star when `r2` is smaller than `r1`. */
+  const shape = (
+    cx: number, cy: number, r1: number, r2: number, n: number, rot: number
+  ): void => {
+    ctx.beginPath();
+    const steps = r2 === r1 ? n : n * 2;
+    for (let i = 0; i < steps; i++) {
+      const a = rot + (i * Math.PI * 2) / steps;
+      const r = r2 === r1 || i % 2 === 0 ? r1 : r2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  };
+  const paint = (fill: number, line = 2.5): void => {
+    ctx.fillStyle = g(fill);
+    ctx.fill();
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = line;
+    ctx.stroke();
+  };
+
+  // Ribs along the tile edges: they meet their neighbours to make one
+  // continuous coffer grid down the hall.
+  const rib = S * 0.058;
+  ctx.fillStyle = g(230);
+  ctx.fillRect(0, 0, S, rib);
+  ctx.fillRect(0, S - rib, S, rib);
+  ctx.fillRect(0, 0, rib, S);
+  ctx.fillRect(S - rib, 0, rib, S);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(rib, rib, S - 2 * rib, S - 2 * rib);
+
+  // A ruled border inside the coffer, with a small lozenge at each corner.
+  const inset = S * 0.145;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(inset, inset, S - 2 * inset, S - 2 * inset);
+  for (const [cx, cy] of [
+    [inset, inset], [S - inset, inset], [inset, S - inset], [S - inset, S - inset],
+  ]) {
+    shape(cx, cy, S * 0.036, S * 0.036, 4, 0);
+    paint(178, 2);
+  }
+
+  // Quarter medallions at the tile corners: four tiles complete each one, so
+  // the rib crossings carry a small star of their own.
+  for (const [cx, cy] of [[0, 0], [S, 0], [0, S], [S, S]]) {
+    shape(cx, cy, S * 0.105, S * 0.045, 8, Math.PI / 8);
+    paint(204);
+  }
+
+  // The medallion: one eight-pointed star with sharp points, an octagon
+  // inside it and a dark boss at the middle.
+  shape(S / 2, S / 2, S * 0.245, S * 0.104, 8, -Math.PI / 2);
+  paint(168, 3);
+  shape(S / 2, S / 2, S * 0.106, S * 0.106, 8, Math.PI / 8);
+  paint(206, 2.5);
+  ctx.beginPath();
+  ctx.arc(S / 2, S / 2, S * 0.044, 0, Math.PI * 2);
+  paint(120, 2.5);
+
+  // A whisper of plaster grain so the flat fills are not perfectly flat.
+  const rnd = mulberry32(29);
+  for (let i = 0; i < 7000; i++) {
+    ctx.fillStyle = rnd() > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.045)";
+    ctx.fillRect(rnd() * S, rnd() * S, 1.5, 1.5);
+  }
+  return c;
+}
+
 /* ---- type helpers ------------------------------------------------------ */
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -275,12 +369,14 @@ export interface PlaqueText {
 }
 
 /**
- * A brass plate with the title engraved on it, the author in smaller
- * italics beneath. 1024×280 for a 0.62 × 0.17 m plate — large enough to
- * read from the middle of the hall, and crisp when you walk up to it.
+ * A brass plate with the title engraved on it, a hairline rule, and the
+ * author in italics beneath. 1024×614 for a 0.50 × 0.30 m plate hung beside
+ * the picture the way a museum hangs its label — so the type can be set
+ * large enough to read from the middle of the hall without a plate as wide
+ * as the frame.
  */
 export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElement {
-  const w = 1024, h = 280;
+  const w = 1024, h = 614;
   const c = makeCanvas(w, h);
   const ctx = ctx2d(c);
 
@@ -323,8 +419,6 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     ctx.stroke();
   }
 
-  // Engraving: dark fill with a hair of light offset below, so it reads as
-  // cut into the metal rather than printed on it.
   const ink = "rgba(48,30,10,0.94)";
   const glint = "rgba(255,245,215,0.45)";
   const maxWidth = w - 130;
@@ -332,36 +426,67 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
   ctx.textBaseline = "middle";
 
   const titleFont = (px: number) => `600 ${px}px ${family}`;
-  const authorLine = [text.author, text.series ? "Series" : ""]
-    .filter(Boolean)
-    .join(" · ");
   const authorFont = (px: number) => `italic 400 ${px}px ${family}`;
 
-  const title = fitText(ctx, text.title, titleFont, 100, 54, maxWidth, 2);
-  const author = authorLine
-    ? fitText(ctx, authorLine, authorFont, 64, 40, maxWidth, 1)
+  const title = fitText(ctx, text.title, titleFont, 165, 92, maxWidth, 3);
+  const author = text.author
+    ? fitText(ctx, text.author, authorFont, 105, 66, maxWidth, 2)
     : { lines: [], px: 0 };
+  // "Series" gets its own line rather than an interpunct after the author:
+  // joined, a long byline wraps and leaves the separator dangling.
+  const seriesPx = Math.round((author.px || 96) * 0.76);
 
-  const titleLh = title.px * 1.06;
+  const titleLh = title.px * 1.08;
+  const authorLh = author.px * 1.22;
+  const seriesH = text.series ? seriesPx * 1.5 : 0;
+  const rule = author.lines.length || text.series ? 46 : 0;
   const titleH = title.lines.length * titleLh;
-  const authorH = author.lines.length ? author.px * 1.25 + 10 : 0;
-  let y = h / 2 - (titleH + authorH) / 2 + titleLh / 2;
+  const authorH = author.lines.length * authorLh;
+  let y = h / 2 - (titleH + rule + authorH + seriesH) / 2 + titleLh / 2;
+
+  /* Engraving: dark fill with a hair of light below, so it reads as cut
+     into the metal rather than printed on it. */
+  const cut = (line: string, at: number): void => {
+    ctx.fillStyle = glint;
+    ctx.fillText(line, w / 2, at + 3);
+    ctx.fillStyle = ink;
+    ctx.fillText(line, w / 2, at);
+  };
 
   ctx.font = titleFont(title.px);
   for (const line of title.lines) {
-    ctx.fillStyle = glint;
-    ctx.fillText(line, w / 2, y + 2);
-    ctx.fillStyle = ink;
-    ctx.fillText(line, w / 2, y);
+    cut(line, y);
     y += titleLh;
   }
-  if (author.lines.length) {
-    y += 10 + (author.px * 1.25) / 2 - titleLh / 2;
-    ctx.font = authorFont(author.px);
-    ctx.fillStyle = glint;
-    ctx.fillText(author.lines[0], w / 2, y + 2);
-    ctx.fillStyle = ink;
-    ctx.fillText(author.lines[0], w / 2, y);
+  if (rule) {
+    // A short rule between the two, the width of a museum label's.
+    const ry = y - titleLh / 2 + rule / 2;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = glint;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 90, ry + 2);
+    ctx.lineTo(w / 2 + 90, ry + 2);
+    ctx.stroke();
+    ctx.strokeStyle = ink;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 90, ry);
+    ctx.lineTo(w / 2 + 90, ry);
+    ctx.stroke();
+
+    y += rule - titleLh / 2;
+    if (author.lines.length) {
+      y += authorLh / 2;
+      ctx.font = authorFont(author.px);
+      for (const line of author.lines) {
+        cut(line, y);
+        y += authorLh;
+      }
+      y -= authorLh / 2;
+    }
+    if (text.series) {
+      ctx.font = authorFont(seriesPx);
+      cut("Series", y + seriesH / 2);
+    }
   }
   return c;
 }

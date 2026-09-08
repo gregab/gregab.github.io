@@ -90,13 +90,11 @@ const payload = JSON.stringify(
 <p class="corridor-help font-ui text-muted-foreground" data-corridor-help>
   <span class="corridor-help-keys">
     Walk with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow
-    keys · drag to look around · stand on the walkway and it carries you ·
-    click a frame to open it on Goodreads
+    keys · drag to look around · click a frame to open it on Goodreads
   </span>
   <span class="corridor-help-touch">
     Drag in the lower left to walk · drag anywhere else to look around ·
-    stand on the walkway and it carries you · tap a frame to open it on
-    Goodreads
+    tap a frame to open it on Goodreads
   </span>
 </p>
 
@@ -238,8 +236,9 @@ const payload = JSON.stringify(
   }
 
   /* ---- the aimed book -------------------------------------------------- */
-  /* Top-centre, out of the way of the plaque that sits under every frame
-     when you face it, and of the stick and look-drag on touch screens. */
+  /* Top-centre, clear of the label beside each frame and of the stick and
+     look-drag on touch screens. It repeats what the plaque says, so it is
+     set small: a caption, not a headline. */
   .corridor-label {
     position: absolute;
     left: 50%;
@@ -251,8 +250,8 @@ const payload = JSON.stringify(
     align-items: center;
     gap: 0.1rem;
     /* Leaves the fullscreen button's corner clear at narrow desktop widths. */
-    max-width: min(100% - 10rem, 30rem);
-    padding: 0.7rem 1.25rem 0.75rem;
+    max-width: min(100% - 10rem, 26rem);
+    padding: 0.5rem 1rem 0.55rem;
     border-radius: 0.35rem;
     background: rgb(22 15 10 / 0.62);
     color: #f5eee4;
@@ -267,8 +266,7 @@ const payload = JSON.stringify(
     text-decoration: underline;
   }
   /* On a touch screen the caption becomes a full-width band, like a wall
-     label, and the fullscreen button moves out of its way. Type stays large:
-     the plaque is small on a phone, and this is where the title gets read. */
+     label, and the fullscreen button moves out of its way. */
   .corridor[data-touch] .corridor-label {
     top: 0;
     left: 0;
@@ -276,13 +274,13 @@ const payload = JSON.stringify(
     transform: none;
     max-width: none;
     border-radius: 0;
-    padding: 0.7rem 1rem 0.8rem;
+    padding: 0.5rem 1rem 0.6rem;
   }
   .corridor[data-touch] .corridor-label-title {
-    font-size: 1.35rem;
+    font-size: 1.05rem;
   }
   .corridor[data-touch] .corridor-label-meta {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
   }
   .corridor[data-touch] .corridor-fs {
     top: auto;
@@ -292,13 +290,13 @@ const payload = JSON.stringify(
   .corridor-label-title {
     font-family: var(--font-newsreader);
     font-weight: 600;
-    font-size: 1.4rem;
-    line-height: 1.2;
+    font-size: 1.05rem;
+    line-height: 1.25;
     text-wrap: balance;
   }
   .corridor-label-meta {
-    margin-top: 0.15rem;
-    font-size: 0.95rem;
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
     color: #d9cdbd;
   }
   .corridor-label-meta:empty {
@@ -306,7 +304,7 @@ const payload = JSON.stringify(
   }
   .corridor-label-cta {
     margin-top: 0.15rem;
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     letter-spacing: 0.02em;
     text-transform: uppercase;
     color: rgb(var(--mark));

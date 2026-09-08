@@ -110,7 +110,9 @@ npm run build   # astro check && astro build && pagefind --site dist
 - **The curiosity timeline is a 3D corridor.** `/curiosity` renders
   `src/components/CuriosityCorridor.astro`, a first-person gallery built with
   three.js in `src/scripts/corridor/` (`corridor.ts` scene, `input.ts` keys /
-  drag / touch stick, `textures.ts` procedural surfaces and plaques,
+  drag / touch stick, `textures.ts` procedural surfaces, plaques and the
+  painted ceiling, `frames.ts` the five mouldings, `props.ts` plants,
+  benches and the runner, `walkway.ts` the parked moving walkway,
   `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
   the same order: entry 0 hangs first, on the left, and they alternate walls.
   The old 2D `CuriosityTimeline.astro` is not parked — it is the fallback,
@@ -199,9 +201,23 @@ npm run build   # astro check && astro build && pagefind --site dist
   mouldings in `src/scripts/corridor/frames.ts` (ornate gilt, walnut
   cassetta, reeded antique gold, ebonised with a gilt slip, arched
   tabernacle) cycle so no two neighbours match, and the gilt varies a shade
-  per frame. The moving walkway down the middle (`walkway.ts`) carries
-  whoever stands on it toward the far end; its tread is why the scene
-  renders at a low idle rate instead of not at all. Controls follow
+  per frame. Each book's label hangs *beside* its frame, on the wall to your
+  right as you face it, the way a museum hangs one — big enough to read at
+  1.45 m, which is a height you read standing up rather than stooping. The
+  ceiling is the one place the arc runs overhead: a coffer per bay with a
+  star medallion, drawn greyscale in `textures.ts` and multiplied by a
+  vertex colour that crossfades the same five stops, so it is the arc again
+  and not a sixth colour. Note a colour *attribute* is read as linear, so
+  the sRGB tint has to be converted going in — pass it straight through and
+  the whole ceiling comes out grey. Plants, benches and the runner
+  (`props.ts`) are furniture in the same sense gilt and brass are
+  materials. The lights are deliberately weak — the lantern on the camera
+  especially, since it hits every picture head-on — because the failure mode
+  here is a blown-out cover, not a dim hall; the additive glow decals do the
+  work of looking lit. The moving walkway down the middle (`walkway.ts`) is
+  **parked**, not deleted: `SHOW_WALKWAY` in `corridor.ts` builds it, steps
+  it and idles the render loop for its tread. With it off nothing animates
+  at rest, so the scene renders only on input. Controls follow
   convention and should stay conventional: W A S D / arrows on a keyboard
   (arrows turn, A/D strafe), drag to look, a floating stick in the
   lower-left on touch with drag-to-look elsewhere. The caption pill sits at
