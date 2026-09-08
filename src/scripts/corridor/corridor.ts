@@ -37,6 +37,7 @@ import {
 import { Controls } from "./input";
 import { Ends } from "./ends";
 import { Props } from "./props";
+import { type WindowSpot, Windows } from "./windows";
 import { Walkway } from "./walkway";
 import {
   type FrameStyle,
@@ -119,11 +120,11 @@ const FLOATING = DISPLAY === "float";
 // view down the hall, and turned ~30 degrees off the corridor's axis: far
 // enough to read while you approach, not so far it goes edge-on as you
 // draw level. The aisle is what is left to walk in.
-const FLOAT_X = 1.22;
+const FLOAT_X = 1.0;
 const FLOAT_ART_Y = 1.8;
 const FLOAT_PLAQUE_Y = 0.92;
 const FLOAT_YAW = 0.52;
-const AISLE_HALF = 0.8;
+const AISLE_HALF = 0.58;
 
 /*
   The moving walkway is built and stepped only when this is on. It is off
@@ -218,6 +219,8 @@ export class Corridor {
   private ends!: Ends;
   private walkway: Walkway | null = null;
   private props!: Props;
+  private windows: Windows | null = null;
+  private glowTex!: THREE.CanvasTexture;
   private lastRenderAt = 0;
   private lantern!: THREE.PointLight;
   private spots: THREE.SpotLight[] = [];
@@ -469,18 +472,41 @@ export class Corridor {
   }
 
   /**
-   * Plants, benches and the runner. They go on the wall opposite a frame,
-   * where there is nothing hanging, spaced so a walk down the hall passes a
-   * few of each rather than a row of the same thing.
+   * Everything that stands against a wall: windows, plants, benches, and the
+   * runner down the middle.
+   *
+   * A wall's free positions are the ones where the book at that z hangs on
+   * the *other* wall, which on alternating sides means one every two bays.
+   * Walking those in order and giving three out of every four to a window
+   * lays down an arcade with a plant or a bench in the fourth, and nothing
+   * ever lands on top of anything else.
    */
   private buildProps(): void {
     const plants: { side: -1 | 1; z: number; variant: number }[] = [];
     const benches: { side: -1 | 1; z: number; variant: number }[] = [];
-    this.frames.forEach((f, i) => {
-      const facing: -1 | 1 = f.side === -1 ? 1 : -1;
-      if (i % 4 === 1) plants.push({ side: facing, z: f.z, variant: i });
-      else if (i % 8 === 4) benches.push({ side: facing, z: f.z, variant: i });
-    });
+    const windows: WindowSpot[] = [];
+    const span = Math.max(1e-6, (this.frames.length - 1) * SPACING);
+
+    for (const wall of [-1, 1] as const) {
+      let k = 0;
+      for (const f of this.frames) {
+        if (f.side === wall) continue;
+        if (k % 4 === 3) {
+          const spot = { side: wall, z: f.z, variant: f.index };
+          if (Math.floor(k / 4) % 2 === 0) plants.push(spot);
+          else benches.push(spot);
+        } else if (FLOATING) {
+          // Only the floating hall has bare walls to break up; hung, the
+          // books are already on them.
+          windows.push({
+            side: wall,
+            z: f.z,
+            t: Math.min(1, Math.max(0, -f.z / span)),
+          });
+        }
+        k++;
+      }
+    }
     // A plant at each end of the hall too, flanking the doorways.
     for (const z of [this.zMax - 1.5, this.zMin + 1.5]) {
       plants.push({ side: -1, z, variant: 0 }, { side: 1, z, variant: 1 });
@@ -497,6 +523,11 @@ export class Corridor {
       },
     });
     this.scene.add(this.props.group);
+
+    if (windows.length) {
+      this.windows = new Windows(windows, HALL_W, this.glowTex);
+      this.scene.add(this.windows.group);
+    }
   }
 
   private buildFrames(): void {
@@ -527,6 +558,7 @@ export class Corridor {
     coneTex.colorSpace = THREE.SRGBColorSpace;
     const glowTex = new THREE.CanvasTexture(glowCanvas());
     glowTex.colorSpace = THREE.SRGBColorSpace;
+    this.glowTex = glowTex;
     this.coneMat = new THREE.MeshBasicMaterial({
       map: coneTex,
       transparent: true,
@@ -807,6 +839,7 @@ export class Corridor {
     this.poolMat.opacity = dark ? 0.7 : 0.45;
     this.walkway?.setTheme(dark);
     this.props.setTheme(dark);
+    this.windows?.setTheme(p);
     this.ceilTex.image = this.ceilingImage();
     this.ceilTex.needsUpdate = true;
 
@@ -1202,6 +1235,7 @@ export class Corridor {
     });
     this.walkway?.dispose();
     this.props.dispose();
+    this.windows?.dispose();
     this.ends.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
