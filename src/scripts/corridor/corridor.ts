@@ -38,6 +38,7 @@ import { Controls } from "./input";
 import { Ends } from "./ends";
 import { Props } from "./props";
 import { type WindowSpot, Windows } from "./windows";
+import { type BearerSpot, Bearers } from "./bearers";
 import { Walkway } from "./walkway";
 import {
   type FrameStyle,
@@ -122,9 +123,25 @@ const FLOATING = DISPLAY === "float";
 // draw level. The aisle is what is left to walk in.
 const FLOAT_X = 1.0;
 const FLOAT_ART_Y = 1.8;
-const FLOAT_PLAQUE_Y = 0.92;
+const FLOAT_PLAQUE_Y = 0.8;
 const FLOAT_YAW = 0.52;
 const AISLE_HALF = 0.58;
+
+/*
+  Somebody has to hold all this up. With bearers on, a tall thin blue
+  creature stands behind each floating frame holding it out in front of
+  itself, and the label dangles from the frame's bottom rail on two cords.
+  Floating only — hung on a wall there is nothing for one to hold.
+*/
+const BEARERS = true;
+
+// A floating picture's lamp hangs forward of it, out over the aisle, rather
+// than straight above. Directly overhead it grazes the picture's face at a
+// useless angle and lands squarely on the bearer's head, which is a foot
+// below it and comes back white. These are sin/cos of FLOAT_YAW times the
+// distance the lamp is carried forward.
+const LAMP_DX = 0.2;
+const LAMP_DZ = 0.35;
 
 /*
   The moving walkway is built and stepped only when this is on. It is off
@@ -220,6 +237,7 @@ export class Corridor {
   private walkway: Walkway | null = null;
   private props!: Props;
   private windows: Windows | null = null;
+  private bearers: Bearers | null = null;
   private glowTex!: THREE.CanvasTexture;
   private lastRenderAt = 0;
   private lantern!: THREE.PointLight;
@@ -606,6 +624,7 @@ export class Corridor {
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3(1, 1, 1);
     const p = new THREE.Vector3();
+    const bearerSpots: BearerSpot[] = [];
 
     this.entries.forEach((entry, i) => {
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
@@ -625,6 +644,7 @@ export class Corridor {
       group.position.copy(home);
       group.rotation.y = yaw;
       group.updateMatrixWorld(true);
+      bearerSpots.push({ position: home.clone(), yaw, index: i });
 
       // Moulding parts share the group's transform, offset per placement.
       // A floating frame gets the same parts again, spun half a turn, so it
@@ -663,11 +683,12 @@ export class Corridor {
       m.compose(new THREE.Vector3(poolX, 0.006, z), poolQ, s);
       this.pools.setMatrixAt(i, m);
       // Ceiling fixture + its glowing face
-      const fx = side * (FLOATING ? FLOAT_X : HALL_W / 2 - FIXTURE_IN);
-      m.compose(new THREE.Vector3(fx, HALL_H - 0.065, z), new THREE.Quaternion(), s);
+      const fx = side * (FLOATING ? FLOAT_X - LAMP_DX : HALL_W / 2 - FIXTURE_IN);
+      const fz = z + (FLOATING ? LAMP_DZ : 0);
+      m.compose(new THREE.Vector3(fx, HALL_H - 0.065, fz), new THREE.Quaternion(), s);
       fixtures.setMatrixAt(i, m);
       const discQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
-      m.compose(new THREE.Vector3(fx, HALL_H - 0.132, z), discQ, s);
+      m.compose(new THREE.Vector3(fx, HALL_H - 0.132, fz), discQ, s);
       this.discs.setMatrixAt(i, m);
 
       // The art
@@ -779,6 +800,40 @@ export class Corridor {
     this.discs.instanceMatrix.needsUpdate = true;
 
     this.scene.add(this.cones, this.pools, fixtures, this.discs);
+
+    if (FLOATING) this.buildCords();
+    if (FLOATING && BEARERS) {
+      this.bearers = new Bearers(bearerSpots, FLOAT_ART_Y);
+      this.scene.add(this.bearers.group);
+    }
+  }
+
+  /**
+   * Two cords from the frame's bottom rail to the top corners of the label,
+   * so the plate reads as hanging off the picture rather than as floating
+   * under it on nothing.
+   */
+  private buildCords(): void {
+    const top = -(FRAME_H / 2 + BORDER);
+    const bottom = FLOAT_PLAQUE_Y - FLOAT_ART_Y + PLAQUE_H / 2;
+    const geo = new THREE.CylinderGeometry(0.007, 0.007, top - bottom, 6);
+    const cords = new THREE.InstancedMesh(geo, this.trimMat, this.frames.length * 2);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const one = new THREE.Vector3(1, 1, 1);
+    const local = new THREE.Vector3();
+    let slot = 0;
+    for (const f of this.frames) {
+      q.setFromEuler(new THREE.Euler(0, f.group.rotation.y, 0));
+      for (const sx of [-1, 1]) {
+        local.set(sx * (PLAQUE_W / 2 - 0.06), (top + bottom) / 2, 0);
+        local.applyQuaternion(q).add(f.group.position);
+        m.compose(local, q, one);
+        cords.setMatrixAt(slot++, m);
+      }
+    }
+    cords.instanceMatrix.needsUpdate = true;
+    this.scene.add(cords);
   }
 
   private buildLights(): void {
@@ -840,6 +895,7 @@ export class Corridor {
     this.walkway?.setTheme(dark);
     this.props.setTheme(dark);
     this.windows?.setTheme(p);
+    this.bearers?.setTheme(p);
     this.ceilTex.image = this.ceilingImage();
     this.ceilTex.needsUpdate = true;
 
@@ -1008,12 +1064,18 @@ export class Corridor {
         spot.intensity = 0;
         return;
       }
-      spot.intensity = this.palette.dark ? 20 : 15;
+      // Floating, the picture carries most of its own light, so the spot is
+      // only there for the gilt and the label — and it has to be gentle,
+      // because a bearer's head is a metre under it and any brighter comes
+      // back white however blue the creature is painted.
+      spot.intensity = this.palette.dark
+        ? (FLOATING ? 9 : 20)
+        : (FLOATING ? 7 : 15);
       spot.color.set(toColor(lighten(f.tint, 0.55)));
       spot.position.set(
-        f.side * (FLOATING ? FLOAT_X : HALL_W / 2 - FIXTURE_IN),
+        f.side * (FLOATING ? FLOAT_X - LAMP_DX : HALL_W / 2 - FIXTURE_IN),
         HALL_H - 0.15,
-        f.z
+        f.z + (FLOATING ? LAMP_DZ : 0)
       );
       // Aim low enough that the cone takes in the label hanging below.
       spot.target.position.set(
@@ -1236,6 +1298,7 @@ export class Corridor {
     this.walkway?.dispose();
     this.props.dispose();
     this.windows?.dispose();
+    this.bearers?.dispose();
     this.ends.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();

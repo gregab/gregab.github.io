@@ -113,8 +113,8 @@ npm run build   # astro check && astro build && pagefind --site dist
   drag / touch stick, `textures.ts` procedural surfaces, plaques and the
   painted ceiling, `frames.ts` the five mouldings, `props.ts` plants,
   benches and the runner, `ends.ts` the two open ends, `windows.ts` the
-  wall arcade, `walkway.ts` the parked moving walkway, `palette.ts` theme
-  tokens). The data is still `src/data/curiosity.ts`, in
+  wall arcade, `bearers.ts` the creatures holding the frames, `walkway.ts`
+  the parked moving walkway, `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
   the same order: entry 0 hangs first, on the left, and they alternate walls.
   The old 2D `CuriosityTimeline.astro` is not parked — it is the fallback,
   swapped in from a `<template>` when WebGL is missing (iOS Lockdown Mode,
@@ -242,7 +242,27 @@ npm run build   # astro check && astro build && pagefind --site dist
   five times, one per stop, and the windows are grouped by the stop they
   take. They are flush rather than cut through: there is nothing behind
   those walls but the same backdrop. Windows, plants and benches share the
-  free wall positions on a four-step cycle, so nothing lands on anything. A floating picture has only a ceiling spot raking
+  free wall positions on a four-step cycle, so nothing lands on anything.
+  Floating also has **bearers** (`BEARERS` in `corridor.ts`, `bearers.ts`):
+  a tall thin blue creature stands behind every frame holding it out in
+  front of itself, with the label dangling from the frame's bottom rail on
+  two cords. Its proportions are not a style choice — the body is a narrow
+  column because anything wider would block the back of the picture it is
+  holding, and the height falls out of the head having to clear the top of a
+  frame hung at 1.8 m, which lands it near 2.8 m tall. Its lamp had to move
+  forward over the aisle and come down to about half strength, because a
+  head a metre under a picture light comes back white however blue it is
+  painted; the picture can afford that, since floating it is mostly lit by
+  its own emissive map anyway.
+
+  **Careful with the tint tokens in the scene.** `--ct-tint-*` are UI
+  values, picked to read against the background they sit on, so the dark
+  theme's stops are *lighter* than the light theme's — `--ct-tint-5` is
+  `#35566e` by day and `#9db8cc` at night. That is right for a line on a
+  dark page and backwards for an object standing under a lamp, which needs
+  pigment rather than contrast. The bearers darken their stop in the dark
+  theme and lighten it in the light one. Anything else in the scene taking a
+  stop as a surface colour needs the same inversion. A floating picture has only a ceiling spot raking
   both its faces, so it carries more of its own light — the emissive map
   goes from a legibility floor to something nearer a lightbox, which is what
   a dim gallery would use anyway. Everything downstream reads `FLOATING`;
