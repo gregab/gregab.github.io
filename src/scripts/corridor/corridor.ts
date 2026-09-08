@@ -35,6 +35,7 @@ import {
   writeCoverCache,
 } from "@/lib/coverCache";
 import { Controls } from "./input";
+import { Ends } from "./ends";
 import { Props } from "./props";
 import { Walkway } from "./walkway";
 import {
@@ -181,12 +182,12 @@ export class Corridor {
   private ceilMat!: THREE.MeshStandardMaterial;
   private trimMat!: THREE.MeshStandardMaterial;
   private crownMat!: THREE.MeshStandardMaterial;
-  private doorMat!: THREE.MeshBasicMaterial;
   private coneMat!: THREE.MeshBasicMaterial;
   private poolMat!: THREE.MeshBasicMaterial;
   private discMat!: THREE.MeshBasicMaterial;
   private hemi!: THREE.HemisphereLight;
   private ceilGeo!: THREE.PlaneGeometry;
+  private ends!: Ends;
   private walkway: Walkway | null = null;
   private props!: Props;
   private lastRenderAt = 0;
@@ -243,6 +244,7 @@ export class Corridor {
     pmrem.dispose();
 
     this.buildHall();
+    this.buildEnds();
     this.buildWalkway();
     this.buildFrames();
     this.buildProps();
@@ -370,7 +372,6 @@ export class Corridor {
     });
     this.trimMat = new THREE.MeshStandardMaterial({ roughness: 0.6 });
     this.crownMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
-    this.doorMat = new THREE.MeshBasicMaterial();
 
     const wallGeo = new THREE.PlaneGeometry(L, HALL_H);
     const left = new THREE.Mesh(wallGeo, this.wallMat);
@@ -402,27 +403,6 @@ export class Corridor {
     ceil.rotation.x = Math.PI / 2;
     ceil.position.set(0, HALL_H, zc);
 
-    const endGeo = new THREE.PlaneGeometry(HALL_W, HALL_H);
-    const farEnd = new THREE.Mesh(endGeo, this.wallMat);
-    farEnd.position.set(0, HALL_H / 2, this.zMin);
-    const nearEnd = new THREE.Mesh(endGeo, this.wallMat);
-    nearEnd.position.set(0, HALL_H / 2, this.zMax);
-    nearEnd.rotation.y = Math.PI;
-
-    // A dark doorway in each end wall: the hall continues past what's hung.
-    const doorGeo = new THREE.PlaneGeometry(1.3, 2.5);
-    const farDoor = new THREE.Mesh(doorGeo, this.doorMat);
-    farDoor.position.set(0, 1.25, this.zMin + 0.01);
-    const nearDoor = new THREE.Mesh(doorGeo, this.doorMat);
-    nearDoor.position.set(0, 1.25, this.zMax - 0.01);
-    nearDoor.rotation.y = Math.PI;
-    const archGeo = new THREE.BoxGeometry(1.5, 2.6, 0.08);
-    const archMat = this.trimMat;
-    const farArch = new THREE.Mesh(archGeo, archMat);
-    farArch.position.set(0, 1.3, this.zMin + 0.02);
-    const nearArch = new THREE.Mesh(archGeo, archMat);
-    nearArch.position.set(0, 1.3, this.zMax - 0.02);
-
     const baseGeo = new THREE.BoxGeometry(0.035, 0.17, L);
     const baseL = new THREE.Mesh(baseGeo, this.trimMat);
     baseL.position.set(-HALL_W / 2 + 0.017, 0.085, zc);
@@ -444,10 +424,19 @@ export class Corridor {
     railR.position.set(HALL_W / 2 - 0.015, railY, zc);
 
     this.scene.add(
-      left, right, floor, ceil, farEnd, nearEnd,
-      farDoor, nearDoor, farArch, nearArch,
+      left, right, floor, ceil,
       baseL, baseR, crownL, crownR, railL, railR
     );
+  }
+
+  private buildEnds(): void {
+    this.ends = new Ends({
+      hallWidth: HALL_W,
+      hallHeight: HALL_H,
+      zNear: this.zMax,
+      zFar: this.zMin,
+    });
+    this.scene.add(this.ends.group);
   }
 
   private buildWalkway(): void {
@@ -732,7 +721,7 @@ export class Corridor {
     this.ceilMat.color.set(toColor(dark ? darken(muted, 0.25) : lighten(muted, 0.35)));
     this.trimMat.color.set(dark ? "#241a13" : "#3a2a1d");
     this.crownMat.color.set(toColor(dark ? lighten(muted, 0.08) : lighten(muted, 0.5)));
-    this.doorMat.color.set(toColor(darken(bg, dark ? 0.75 : 0.85)));
+    this.ends.setTheme(p);
 
     // The far end dissolves into haze: a shade below the walls in the light
     // theme (paper-white fog read as a blown-out window), below the page
@@ -793,7 +782,7 @@ export class Corridor {
       // The plane is rotated onto the ceiling, so its local +y is world +z.
       const z = zc + pos.getY(i);
       const t = Math.min(1, Math.max(0, -z / span));
-      const wash = lighten(tintAt(this.palette, t), dark ? 0.44 : 0.58);
+      const wash = lighten(tintAt(this.palette, t), dark ? 0.3 : 0.42);
       c.setRGB(wash[0], wash[1], wash[2], THREE.SRGBColorSpace);
       col.setXYZ(i, c.r, c.g, c.b);
     }
@@ -1153,6 +1142,7 @@ export class Corridor {
     });
     this.walkway?.dispose();
     this.props.dispose();
+    this.ends.dispose();
     this.scene.environment?.dispose();
     this.renderer.dispose();
   }

@@ -136,8 +136,22 @@ export class Props {
     bladeGeo.translate(0, 0.5, 0);
     bladeGeo.scale(1, 1, 0.22);
 
-    const seatGeo = this.geo(new THREE.BoxGeometry(1.15, 0.055, 0.36));
-    const legGeo = this.geo(new THREE.BoxGeometry(0.05, 0.42, 0.3));
+    // The bench runs along the corridor (Z), not across it, so it reads as
+    // something you'd walk past and sit on facing the frames rather than a
+    // barrier laid across the hall. Depth (X) is what has to clear the wall
+    // on one side and the camera's reach on the other.
+    const seatGeo = this.geo(new THREE.BoxGeometry(0.36, 0.055, 1.15));
+    // A plank foot at each end, inset from the seat's edges, rather than
+    // thin legs near the middle: at the size this hall renders furniture,
+    // a slab support silhouettes as a bench from across the room while a
+    // stick leg disappears into the dim lighting.
+    const legGeo = this.geo(new THREE.BoxGeometry(0.32, 0.395, 0.06));
+    // A stretcher rail ties the two feet together underneath the seat —
+    // the detail that keeps the bench from reading as two separate blocks
+    // with a slab resting on top. Built along Z at the origin so instances
+    // only need a translation, matching every other part in this file.
+    const railGeo = this.geo(new THREE.CylinderGeometry(0.018, 0.018, 0.82, 8));
+    railGeo.rotateX(Math.PI / 2);
 
     const plants = opts.plants;
     const pots = new THREE.InstancedMesh(potGeo, terracotta, Math.max(1, plants.length));
@@ -215,20 +229,32 @@ export class Props {
     const benches = opts.benches;
     if (benches.length) {
       const seats = new THREE.InstancedMesh(seatGeo, walnut, benches.length);
-      const legs = new THREE.InstancedMesh(legGeo, iron, benches.length * 2);
+      const legs = new THREE.InstancedMesh(legGeo, walnut, benches.length * 2);
+      const rails = new THREE.InstancedMesh(railGeo, iron, benches.length);
       benches.forEach((spot, i) => {
+        // 0.23 in from the wall plane (x = ±1.8) leaves the seat's 0.36 m
+        // depth clearing the wall on the outside and, on the inside, still
+        // outside x = ±1.38 — as close as the camera can walk — so nothing
+        // intersects at either edge.
         const x = spot.side * (opts.hallWidth / 2 - 0.23);
-        m.compose(p.set(x, 0.45, spot.z), new THREE.Quaternion(), flat);
+        // Seat top sits at bench height (0.45 m); the box is centred on
+        // its own thickness below that.
+        m.compose(p.set(x, 0.45 - 0.055 / 2, spot.z), new THREE.Quaternion(), flat);
         seats.setMatrixAt(i, m);
+        // Feet run floor-to-seat-bottom and sit inset from the seat's ends,
+        // directly under it — the thing the floating legs never did.
         for (let k = 0; k < 2; k++) {
-          const dz = (k === 0 ? -1 : 1) * 0.44;
-          m.compose(p.set(x, 0.21, spot.z + dz), new THREE.Quaternion(), flat);
+          const dz = (k === 0 ? -1 : 1) * 0.45;
+          m.compose(p.set(x, 0.395 / 2, spot.z + dz), new THREE.Quaternion(), flat);
           legs.setMatrixAt(i * 2 + k, m);
         }
+        m.compose(p.set(x, 0.15, spot.z), new THREE.Quaternion(), flat);
+        rails.setMatrixAt(i, m);
       });
       seats.instanceMatrix.needsUpdate = true;
       legs.instanceMatrix.needsUpdate = true;
-      this.group.add(seats, legs);
+      rails.instanceMatrix.needsUpdate = true;
+      this.group.add(seats, legs, rails);
     }
 
     /* ---- runner ------------------------------------------------------- */
