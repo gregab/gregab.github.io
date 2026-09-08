@@ -223,8 +223,10 @@ npm run build   # astro check && astro build && pagefind --site dist
   (`props.ts`) are furniture in the same sense gilt and brass are
   materials. **How the books are shown is one switch**, `DISPLAY` at the top
   of `corridor.ts`: `"wall"` hangs them flat on the walls, `"float"`
-  suspends them in mid air down both sides of a central aisle. Float is on.
-  Walking a hall is a bad way to look at things hung flat along it — you see
+  suspends them in mid air down both sides of a central aisle. Wall is on
+  for now — float stays fully built below and switching back is a one-word
+  change, same as the walkway. Walking a hall is a bad way to look at things
+  hung flat along it — you see
   every picture edge-on until you are level with it, and by then you have
   passed it — so floating turns each book about 30° out of the wall to face
   whoever is walking at it, paints it on both faces (a box's +z and -z faces

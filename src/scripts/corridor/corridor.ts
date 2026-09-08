@@ -114,7 +114,11 @@ const BAY = SPACING; // one ceiling coffer per frame
   is moulded on one face or both, where its light and its label go, and how
   wide the walkable aisle is.
 */
-const DISPLAY: "wall" | "float" = "float";
+// `as`, not a `: "wall" | "float"` annotation — the latter still lets TS
+// narrow DISPLAY to whichever literal it's set to, which turns the
+// comparison below into a false "no overlap" type error the moment this
+// isn't "float".
+const DISPLAY = "wall" as "wall" | "float";
 const FLOATING = DISPLAY === "float";
 
 // Inboard of the wall, above eye level so the row does not wall off the
