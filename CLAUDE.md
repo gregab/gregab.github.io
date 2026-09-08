@@ -292,7 +292,16 @@ npm run build   # astro check && astro build && pagefind --site dist
   (touch never locks the pointer; that's a hidden-cursor idea with no touch
   equivalent), and the old drag-to-look as the fallback where Pointer Lock
   isn't supported at all. `input.ts` owns all of this; `LOCK_SUPPORTED`
-  there is the one flag gating it. The caption pill sits at
+  there is the one flag gating it. **A wall has to stop the velocity, not
+  just the position** — clamping `pos` alone leaves the speed you carried
+  into the wall running, and it has to decay back through zero before a
+  strafe the other way moves you, so the first tap off a wall does nothing
+  and the key reads as broken. `clampAxis` does both. Note the sideways
+  budget is small by construction: `HALL_W` is 3.6 m and `WALL_GAP` 0.25,
+  so there are about 3.1 m to strafe across at `WALK` 2.5 m/s — a little
+  over a second end to end. That is the corridor being a corridor, not a
+  bug; widening it is the one constant if it ever needs to feel roomier.
+  The caption pill sits at
   the top, clear of the plaque under every frame; on touch it becomes a
   full-width band and the fullscreen button moves to the bottom-right.
 - **That spine is a double-headed arrow that fades out at both ends**, and the

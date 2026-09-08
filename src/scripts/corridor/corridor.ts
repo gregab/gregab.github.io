@@ -98,6 +98,12 @@ const PLAQUE_X = MOULDING + 0.14 + PLAQUE_W / 2;
 const BELT_SPEED = 1.0; // m/s; an airport walkway runs about 0.7
 const FIXTURE_IN = 0.55; // ceiling spot's distance from the wall
 const BAY = SPACING; // one ceiling coffer per frame
+// How close to a wall you can stand. This is the whole sideways budget:
+// walking is WALK m/s across a hall only (HALL_W - 2 * WALL_GAP) wide, so
+// every centimetre here is time on the strafe keys before you run out of
+// room. Small enough to nearly touch the plaster, large enough that a
+// frame's moulding never reaches the camera's near plane.
+const WALL_GAP = 0.25;
 
 /*
   How the books are shown, and the one switch that changes it.
@@ -1040,9 +1046,17 @@ export class Corridor {
       if (onBelt && this.walkway) this.pos.z -= this.walkway.speed * dt;
       // Floating, the books occupy the sides of the hall, so what is left
       // to walk in is the aisle between them.
-      const xLimit = FLOATING ? AISLE_HALF : HALL_W / 2 - 0.42;
-      this.pos.x = Math.max(-xLimit, Math.min(xLimit, this.pos.x));
-      this.pos.z = Math.max(this.zMin + 0.9, Math.min(this.zMax - 0.9, this.pos.z));
+      //
+      // Stopping at a wall has to stop the velocity too, not just the
+      // position. Left running, the speed you were carrying into the wall
+      // has to unwind back through zero before a strafe the other way moves
+      // you at all — so the first tap away from a wall does nothing, which
+      // is indistinguishable from the key being broken.
+      const xLimit = FLOATING ? AISLE_HALF : HALL_W / 2 - WALL_GAP;
+      this.pos.x = clampAxis(this.pos.x, -xLimit, xLimit, this.vel, "x");
+      this.pos.z = clampAxis(
+        this.pos.z, this.zMin + 0.9, this.zMax - 0.9, this.vel, "z"
+      );
       const s = Math.hypot(this.vel.x, this.vel.z);
       this.bobPhase += s * dt * 2.2;
     }
@@ -1330,6 +1344,30 @@ export class Corridor {
 
 function toColor(c: RGB): THREE.Color {
   return new THREE.Color(c[0], c[1], c[2]);
+}
+
+/**
+ * Hold one axis inside its bounds, killing the velocity that ran into the
+ * bound. Without the second half you keep the speed you hit the wall with,
+ * and it has to decay back through zero before the opposite key moves you —
+ * a tap that way does nothing at all.
+ */
+function clampAxis(
+  value: number,
+  min: number,
+  max: number,
+  vel: { x: number; z: number },
+  axis: "x" | "z"
+): number {
+  if (value < min) {
+    if (vel[axis] < 0) vel[axis] = 0;
+    return min;
+  }
+  if (value > max) {
+    if (vel[axis] > 0) vel[axis] = 0;
+    return max;
+  }
+  return value;
 }
 
 function readFontFamily(): string {
