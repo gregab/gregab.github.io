@@ -131,9 +131,11 @@ const AISLE_HALF = 0.58;
   Somebody has to hold all this up. With bearers on, a tall thin blue
   creature stands behind each floating frame holding it out in front of
   itself, and the label dangles from the frame's bottom rail on two cords.
-  Floating only — hung on a wall there is nothing for one to hold.
+  Floating only — hung on a wall there is nothing for one to hold. Off for
+  now; bearers.ts and everything that reads this flag stay in place so
+  turning it back on is a one-word change.
 */
-const BEARERS = true;
+const BEARERS = false;
 
 // A floating picture's lamp hangs forward of it, out over the aisle, rather
 // than straight above. Directly overhead it grazes the picture's face at a
