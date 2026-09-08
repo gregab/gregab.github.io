@@ -112,8 +112,9 @@ npm run build   # astro check && astro build && pagefind --site dist
   three.js in `src/scripts/corridor/` (`corridor.ts` scene, `input.ts` keys /
   drag / touch stick, `textures.ts` procedural surfaces, plaques and the
   painted ceiling, `frames.ts` the five mouldings, `props.ts` plants,
-  benches and the runner, `ends.ts` the two open ends, `walkway.ts` the
-  parked moving walkway, `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
+  benches and the runner, `ends.ts` the two open ends, `windows.ts` the
+  wall arcade, `walkway.ts` the parked moving walkway, `palette.ts` theme
+  tokens). The data is still `src/data/curiosity.ts`, in
   the same order: entry 0 hangs first, on the left, and they alternate walls.
   The old 2D `CuriosityTimeline.astro` is not parked — it is the fallback,
   swapped in from a `<template>` when WebGL is missing (iOS Lockdown Mode,
@@ -230,7 +231,18 @@ npm run build   # astro check && astro build && pagefind --site dist
   each carry the map the right way round, so one texture reads correctly
   from in front and behind), moulds the frame on both sides, hangs the label
   underneath instead of beside, and narrows the walkable band to the aisle
-  between the two rows. A floating picture has only a ceiling spot raking
+  between the two rows. Floating also puts **windows** down both walls
+  (`windows.ts`), since the books leaving the walls leaves ninety metres of
+  blank plaster: each takes the arc stop nearest its position, so the light
+  outside shifts gold to slate as you walk — the arc told as time of day,
+  the same claim the open ends make. Note a sky cannot be one hue times a
+  value ramp; it is cool overhead and warm at the horizon, and a greyscale
+  gradient tinted by a single colour gives a bronze mirror, which is what
+  the first version of these looked like. So the glass is drawn in colour,
+  five times, one per stop, and the windows are grouped by the stop they
+  take. They are flush rather than cut through: there is nothing behind
+  those walls but the same backdrop. Windows, plants and benches share the
+  free wall positions on a four-step cycle, so nothing lands on anything. A floating picture has only a ceiling spot raking
   both its faces, so it carries more of its own light — the emissive map
   goes from a legibility floor to something nearer a lightbox, which is what
   a dim gallery would use anyway. Everything downstream reads `FLOATING`;
