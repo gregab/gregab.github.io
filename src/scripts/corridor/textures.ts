@@ -501,7 +501,7 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
   // 9px radius); vertical room so the assembled block never runs into the
   // bevel top or bottom, however many lines it ends up needing.
   const marginX = 130;
-  const marginY = 60;
+  const marginY = 74;
   const maxWidth = w - marginX * 2;
   const availH = h - marginY * 2;
   ctx.textAlign = "center";
@@ -510,17 +510,19 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
   const titleFont = (px: number) => `600 ${px}px ${family}`;
   const authorFont = (px: number) => `italic 400 ${px}px ${family}`;
 
-  // Fitting the title and the author independently (the old approach) can
-  // still overflow the plate: each fits its own width and line budget, but
-  // nothing checks the assembled height of title + rule + author + series
-  // against the plate. So step both ceilings down together — title falls
-  // faster, keeping it visibly the larger of the two — and re-wrap until
-  // the whole block fits, holding each as large as that allows. The maxLines
-  // caps below (3 for wrapped words is bounded by the amount of shrinking
-  // needed) are still what fitText enforces; more than a handful of steps
-  // never happen for real book titles.
-  const titleMax = 165, titleFloor = 34;
-  const authorMax = 105, authorFloor = 22;
+  // Two things have to be true at once. The block — title, rule, byline,
+  // "Series" — has to fit the plate; fitting the title and the byline
+  // independently does not guarantee that, since neither one knows the
+  // other's height. And the labels have to look like a set: a museum sets
+  // every label in the same size, and type that swells to fill whatever
+  // room a short title leaves reads as auto-fit rather than as design.
+  //
+  // So these are the sizes a label is set in, not ceilings to grow into.
+  // A title that fits stays here; only one that cannot is stepped down —
+  // both sizes together, the title faster so it stays the larger — until
+  // the assembled block fits. Most plaques in the hall end up identical.
+  const titleMax = 132, titleFloor = 34;
+  const authorMax = 82, authorFloor = 22;
   let titleCeil = titleMax;
   let authorCeil = authorMax;
   let title: { lines: string[]; px: number };
@@ -542,12 +544,17 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     rule = author.lines.length || text.series ? 46 : 0;
     blockH = title.lines.length * titleLh + rule + author.lines.length * authorLh + seriesH;
 
-    if (blockH <= availH || (titleCeil <= titleFloor && authorCeil <= authorFloor)) break;
-    titleCeil = Math.max(titleFloor, titleCeil - 3);
-    authorCeil = Math.max(authorFloor, authorCeil - 2);
+    if (blockH <= availH) break;
+    // Almost always it is the title that is too big — it carries three times
+    // the lines — so spend the title's size first and leave the byline at
+    // the size every other label sets it in. Only once the title is down to
+    // 1.25x the byline, which is the least it can be and still read as the
+    // title, do the two descend together.
+    const titleMin = Math.max(titleFloor, Math.round(authorCeil * 1.25));
+    if (titleCeil > titleMin) titleCeil = Math.max(titleMin, titleCeil - 3);
+    else if (authorCeil > authorFloor) authorCeil = Math.max(authorFloor, authorCeil - 2);
+    else break;
   }
-  let y = h / 2 - blockH / 2 + titleLh / 2;
-
   /* Engraving: dark fill with a hair of light below, so it reads as cut
      into the metal rather than printed on it. */
   const cut = (line: string, at: number): void => {
@@ -557,11 +564,18 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     ctx.fillText(line, w / 2, at);
   };
 
+  // `y` is always the TOP of the next slot, never a baseline, and every
+  // piece is drawn at its own slot's centre because textBaseline is middle.
+  // Carrying a baseline here instead is what put the byline half a title
+  // line low and pushed it off the plate.
+  let y = h / 2 - blockH / 2;
+
   ctx.font = titleFont(title.px);
   for (const line of title.lines) {
-    cut(line, y);
+    cut(line, y + titleLh / 2);
     y += titleLh;
   }
+
   if (rule) {
     // A short rule between the two, the width of a museum label's.
     const ry = y + rule / 2;
@@ -576,21 +590,21 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     ctx.moveTo(w / 2 - 90, ry);
     ctx.lineTo(w / 2 + 90, ry);
     ctx.stroke();
-
     y += rule;
-    if (author.lines.length) {
-      y += authorLh / 2;
-      ctx.font = authorFont(author.px);
-      for (const line of author.lines) {
-        cut(line, y);
-        y += authorLh;
-      }
-      y -= authorLh / 2;
+  }
+
+  if (author.lines.length) {
+    ctx.font = authorFont(author.px);
+    for (const line of author.lines) {
+      cut(line, y + authorLh / 2);
+      y += authorLh;
     }
-    if (text.series) {
-      ctx.font = authorFont(seriesPx);
-      cut("Series", y + seriesH / 2);
-    }
+  }
+
+  if (text.series) {
+    ctx.font = authorFont(seriesPx);
+    cut("Series", y + seriesH / 2);
+    y += seriesH;
   }
   return c;
 }
