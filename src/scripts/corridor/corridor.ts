@@ -98,6 +98,34 @@ const FIXTURE_IN = 0.55; // ceiling spot's distance from the wall
 const BAY = SPACING; // one ceiling coffer per frame
 
 /*
+  How the books are shown, and the one switch that changes it.
+
+  "wall" hangs them on the walls the way a gallery does. "float" suspends
+  them in mid air down both sides of a central aisle, painted on both faces
+  and canted toward whoever is walking at them, so a book is legible from
+  the moment it comes into view rather than only once you stop and turn
+  square to the wall. Walking a hall is a bad way to look at things hung
+  flat along it — you see every picture edge-on until you are level with
+  it, and then you have walked past.
+
+  Everything downstream reads FLOATING: where the frame hangs, whether it
+  is moulded on one face or both, where its light and its label go, and how
+  wide the walkable aisle is.
+*/
+const DISPLAY: "wall" | "float" = "float";
+const FLOATING = DISPLAY === "float";
+
+// Inboard of the wall, above eye level so the row does not wall off the
+// view down the hall, and turned ~30 degrees off the corridor's axis: far
+// enough to read while you approach, not so far it goes edge-on as you
+// draw level. The aisle is what is left to walk in.
+const FLOAT_X = 1.22;
+const FLOAT_ART_Y = 1.8;
+const FLOAT_PLAQUE_Y = 0.92;
+const FLOAT_YAW = 0.52;
+const AISLE_HALF = 0.8;
+
+/*
   The moving walkway is built and stepped only when this is on. It is off
   for now; walkway.ts and everything that reads this flag stay in place so
   turning it back on is a one-word change.
@@ -481,12 +509,15 @@ export class Corridor {
     const styles = buildFrameStyles(mats, FRAME_W + 0.02, FRAME_H + 0.02);
     const styleOf = this.entries.map((_, i) => styleIndexFor(i, styles.length));
 
-    // One InstancedMesh per part per style, sized to the frames that use it.
+    // One InstancedMesh per part per style, sized to the frames that use it
+    // — twice over when a frame is moulded front and back.
+    const FACES = FLOATING ? 2 : 1;
     const partMeshes = styles.map((style, si) => {
       const users = styleOf.filter(x => x === si).length;
       return style.parts.map(part => {
-        const mesh = new THREE.InstancedMesh(part.geometry, part.material, Math.max(1, users * part.placements.length));
-        mesh.count = users * part.placements.length;
+        const slots = users * part.placements.length * FACES;
+        const mesh = new THREE.InstancedMesh(part.geometry, part.material, Math.max(1, slots));
+        mesh.count = slots;
         return mesh;
       });
     });
@@ -522,14 +553,22 @@ export class Corridor {
     this.cones.renderOrder = 2;
     this.pools.renderOrder = 2;
 
-    // Two targets per frame: the picture, and the label beside it.
-    const hitGeo = new THREE.PlaneGeometry(
-      FRAME_W + 2 * BORDER + 0.16,
-      FRAME_H + 2 * BORDER + 0.16
-    );
-    const plaqueHitGeo = new THREE.PlaneGeometry(PLAQUE_W + 0.08, PLAQUE_H + 0.08);
-    const plaqueGeo = new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, 0.014);
-    const artGeo = new THREE.PlaneGeometry(FRAME_W + 0.02, FRAME_H + 0.02);
+    // Two targets per frame: the picture, and the label. Floating, they are
+    // solids rather than planes so a click lands from either side.
+    const hitW = FRAME_W + 2 * BORDER + 0.16;
+    const hitH = FRAME_H + 2 * BORDER + 0.16;
+    const hitGeo = FLOATING
+      ? new THREE.BoxGeometry(hitW, hitH, 0.22)
+      : new THREE.PlaneGeometry(hitW, hitH);
+    const plaqueHitGeo = FLOATING
+      ? new THREE.BoxGeometry(PLAQUE_W + 0.08, PLAQUE_H + 0.08, 0.14)
+      : new THREE.PlaneGeometry(PLAQUE_W + 0.08, PLAQUE_H + 0.08);
+    const plaqueGeo = new THREE.BoxGeometry(PLAQUE_W, PLAQUE_H, FLOATING ? 0.03 : 0.014);
+    // A box's +z and -z faces each carry the map the right way round, so one
+    // texture reads correctly from in front and from behind.
+    const artGeo = FLOATING
+      ? new THREE.BoxGeometry(FRAME_W + 0.02, FRAME_H + 0.02, 0.04)
+      : new THREE.PlaneGeometry(FRAME_W + 0.02, FRAME_H + 0.02);
 
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -540,44 +579,59 @@ export class Corridor {
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
       const z = -i * SPACING;
       const tint = tintAt(this.palette, n > 1 ? i / (n - 1) : 0);
-      const facing = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+      // Hung flat on the wall, or turned out of it into the aisle.
+      const yaw = FLOATING
+        ? -side * FLOAT_YAW
+        : side === -1 ? Math.PI / 2 : -Math.PI / 2;
+      const home = FLOATING
+        ? new THREE.Vector3(side * FLOAT_X, FLOAT_ART_Y, z)
+        : new THREE.Vector3(side * HALL_W / 2, FRAME_Y, z);
       const si = styleOf[i];
       const style: FrameStyle = styles[si];
 
       const group = new THREE.Group();
-      group.position.set(side * HALL_W / 2, FRAME_Y, z);
-      group.rotation.y = facing;
+      group.position.copy(home);
+      group.rotation.y = yaw;
       group.updateMatrixWorld(true);
 
       // Moulding parts share the group's transform, offset per placement.
-      q.setFromEuler(new THREE.Euler(0, facing, 0));
-      p.set(side * HALL_W / 2, FRAME_Y, z);
+      // A floating frame gets the same parts again, spun half a turn, so it
+      // is moulded on the face you meet walking back as well.
+      q.setFromEuler(new THREE.Euler(0, yaw, 0));
+      p.copy(home);
+      const back = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
+      const faces = FLOATING ? [q.clone(), q.clone().multiply(back)] : [q.clone()];
       const tintColor = metalTint(i);
       const slots: FrameRec["slots"] = [];
       style.parts.forEach((part, pi) => {
         const mesh = partMeshes[si][pi];
-        for (const place of part.placements) {
-          const idx = nextSlot[si][pi]++;
-          const off = place.clone().applyQuaternion(q);
-          m.compose(p.clone().add(off), q, s);
-          mesh.setMatrixAt(idx, m);
-          mesh.setColorAt(idx, tintColor);
-          slots.push({ mesh, index: idx });
+        for (const fq of faces) {
+          for (const place of part.placements) {
+            const idx = nextSlot[si][pi]++;
+            const off = place.clone().applyQuaternion(fq);
+            m.compose(p.clone().add(off), fq, s);
+            mesh.setMatrixAt(idx, m);
+            mesh.setColorAt(idx, tintColor);
+            slots.push({ mesh, index: idx });
+          }
         }
       });
 
-      // Wall cone, slightly above the frame centre, flush to the wall.
+      // Wall cone, slightly above the frame centre, flush to the wall. A
+      // floating book has no wall behind it to throw one on (see the count
+      // set below), so it gets only the pool beneath it.
       const coneOff = new THREE.Vector3(0, 0.45, -0.002).applyQuaternion(q);
       m.compose(p.clone().add(coneOff), q, s);
       this.cones.setMatrixAt(i, m);
-      // Floor pool
+      // Floor pool, under the book either way.
       const poolQ = new THREE.Quaternion().setFromEuler(
         new THREE.Euler(-Math.PI / 2, 0, 0)
       );
-      m.compose(new THREE.Vector3(side * (HALL_W / 2 - 0.8), 0.006, z), poolQ, s);
+      const poolX = side * (FLOATING ? FLOAT_X : HALL_W / 2 - 0.8);
+      m.compose(new THREE.Vector3(poolX, 0.006, z), poolQ, s);
       this.pools.setMatrixAt(i, m);
       // Ceiling fixture + its glowing face
-      const fx = side * (HALL_W / 2 - FIXTURE_IN);
+      const fx = side * (FLOATING ? FLOAT_X : HALL_W / 2 - FIXTURE_IN);
       m.compose(new THREE.Vector3(fx, HALL_H - 0.065, z), new THREE.Quaternion(), s);
       fixtures.setMatrixAt(i, m);
       const discQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
@@ -589,20 +643,27 @@ export class Corridor {
       const artTex = new THREE.CanvasTexture(art.canvas);
       artTex.colorSpace = THREE.SRGBColorSpace;
       artTex.anisotropy = this.plasterTex.anisotropy;
-      // A picture reflects the light on it and no more. The emissive map is
-      // a floor, not a glow: enough that a cover is legible in an unlit
-      // stretch of hall, small enough that the lit ones don't blow out.
+      // On a wall a picture reflects the light on it and no more: the
+      // emissive map is a floor, not a glow — enough that a cover is legible
+      // in an unlit stretch of hall, small enough that the lit ones don't
+      // blow out. Floating, the only real light on it comes from straight
+      // above and rakes both faces, so it carries its own instead, which is
+      // what a lightbox in a dim gallery does anyway.
       const artMat = new THREE.MeshStandardMaterial({
         map: artTex,
         emissiveMap: artTex,
         emissive: new THREE.Color(1, 1, 1),
-        emissiveIntensity: 0.07,
+        emissiveIntensity: FLOATING ? 0.38 : 0.07,
         envMapIntensity: 0.3,
         roughness: 0.62,
         metalness: 0,
       });
-      const artMesh = new THREE.Mesh(artGeo, artMat);
-      artMesh.position.z = 0.03;
+      // Box faces are ordered +x -x +y -y +z -z; the picture goes on the two
+      // broad faces and the walnut on the edge.
+      const artMesh = FLOATING
+        ? new THREE.Mesh(artGeo, [mats.walnut, mats.walnut, mats.walnut, mats.walnut, artMat, artMat])
+        : new THREE.Mesh(artGeo, artMat);
+      artMesh.position.z = FLOATING ? 0 : 0.03;
       group.add(artMesh);
 
       // The plaque
@@ -618,21 +679,35 @@ export class Corridor {
         map: plaqueTex,
         metalness: 0.6,
         roughness: 0.32,
+        // Brass hung in mid air catches nothing to reflect, so a floating
+        // label carries a little of its own light, as the picture does.
+        ...(FLOATING
+          ? {
+              emissiveMap: plaqueTex,
+              emissive: new THREE.Color(1, 1, 1),
+              emissiveIntensity: 0.22,
+            }
+          : {}),
       });
-      // Beside the picture, on the side that falls to your right as you
-      // face it — the same hand a museum hangs its label on.
+      // On the wall the label hangs beside the picture, on the hand a museum
+      // hangs it. Floating, it hangs under it, where it is in the same line
+      // of sight and does not widen the row into the aisle. Either way the
+      // plate is a box, so it is already double-sided.
+      const plaqueOff = FLOATING
+        ? new THREE.Vector3(0, FLOAT_PLAQUE_Y - FLOAT_ART_Y, 0)
+        : new THREE.Vector3(PLAQUE_X, PLAQUE_Y - FRAME_Y, 0.007);
       const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-      plaque.position.set(PLAQUE_X, PLAQUE_Y - FRAME_Y, 0.007);
+      plaque.position.copy(plaqueOff);
       group.add(plaque);
 
-      // Invisible hit planes over the picture and over the label.
+      // Invisible hit volumes over the picture and over the label.
       const hit = new THREE.Mesh(hitGeo);
       hit.visible = false;
-      hit.position.set(0, 0, 0.06);
+      hit.position.set(0, 0, FLOATING ? 0 : 0.06);
       hit.userData.index = i;
       const plaqueHit = new THREE.Mesh(plaqueHitGeo);
       plaqueHit.visible = false;
-      plaqueHit.position.set(PLAQUE_X, PLAQUE_Y - FRAME_Y, 0.02);
+      plaqueHit.position.set(plaqueOff.x, plaqueOff.y, FLOATING ? 0 : 0.02);
       plaqueHit.userData.index = i;
       group.add(hit, plaqueHit);
       this.hits.push(hit, plaqueHit);
@@ -649,7 +724,7 @@ export class Corridor {
         artTex,
         hit,
         plaqueTex,
-        centre: new THREE.Vector3(side * HALL_W / 2, FRAME_Y, z),
+        centre: home.clone(),
         coverState: "idle",
         arched: style.arched,
         slots,
@@ -664,6 +739,8 @@ export class Corridor {
         this.scene.add(mesh);
       }
     }
+    // Nothing to throw a cone onto once the books leave the walls.
+    if (FLOATING) this.cones.count = 0;
     this.cones.instanceMatrix.needsUpdate = true;
     this.pools.instanceMatrix.needsUpdate = true;
     fixtures.instanceMatrix.needsUpdate = true;
@@ -858,7 +935,9 @@ export class Corridor {
       this.pos.x += this.vel.x * dt;
       this.pos.z += this.vel.z * dt;
       if (onBelt && this.walkway) this.pos.z -= this.walkway.speed * dt;
-      const xLimit = HALL_W / 2 - 0.42;
+      // Floating, the books occupy the sides of the hall, so what is left
+      // to walk in is the aisle between them.
+      const xLimit = FLOATING ? AISLE_HALF : HALL_W / 2 - 0.42;
       this.pos.x = Math.max(-xLimit, Math.min(xLimit, this.pos.x));
       this.pos.z = Math.max(this.zMin + 0.9, Math.min(this.zMax - 0.9, this.pos.z));
       const s = Math.hypot(this.vel.x, this.vel.z);
@@ -898,8 +977,17 @@ export class Corridor {
       }
       spot.intensity = this.palette.dark ? 20 : 15;
       spot.color.set(toColor(lighten(f.tint, 0.55)));
-      spot.position.set(f.side * (HALL_W / 2 - FIXTURE_IN), HALL_H - 0.15, f.z);
-      spot.target.position.set(f.side * HALL_W / 2, FRAME_Y - 0.1, f.z);
+      spot.position.set(
+        f.side * (FLOATING ? FLOAT_X : HALL_W / 2 - FIXTURE_IN),
+        HALL_H - 0.15,
+        f.z
+      );
+      // Aim low enough that the cone takes in the label hanging below.
+      spot.target.position.set(
+        f.centre.x,
+        f.centre.y - (FLOATING ? 0.55 : 0.1),
+        f.centre.z
+      );
       spot.target.updateMatrixWorld();
     });
   }
