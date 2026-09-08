@@ -338,7 +338,15 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
   return lines;
 }
 
-/** Shrink the font until `text` fits in `maxLines` lines. Returns the lines. */
+/**
+ * Shrink the font from `startPx` until `text` wraps to at most `maxLines`
+ * lines that each fit `maxWidth`. `minPx` is a preferred floor — callers use
+ * it to keep type legible — but it is not allowed to make this function give
+ * up on a text that still overflows: if the wrap still doesn't fit at
+ * `minPx` (a long single word, say, or a caller that started too big for its
+ * own height budget), it keeps shrinking down to an absolute hard floor
+ * rather than hand back lines that will draw off the plate.
+ */
 function fitText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -348,15 +356,20 @@ function fitText(
   maxWidth: number,
   maxLines: number
 ): { lines: string[]; px: number } {
+  const hardFloor = 10;
   let px = startPx;
   for (;;) {
     ctx.font = font(px);
     const lines = wrap(ctx, text, maxWidth);
     const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
-    if ((lines.length <= maxLines && widest <= maxWidth) || px <= minPx) {
+    const fits = lines.length <= maxLines && widest <= maxWidth;
+    if (fits || px <= hardFloor) {
       return { lines, px };
     }
-    px -= 2;
+    // Once below the caller's preferred floor there's no readability left
+    // to protect, so close in on the hard floor a pixel at a time instead
+    // of overshooting it in the usual 2px steps.
+    px -= px > minPx ? 2 : 1;
   }
 }
 
@@ -421,28 +434,56 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
 
   const ink = "rgba(48,30,10,0.94)";
   const glint = "rgba(255,245,215,0.45)";
-  const maxWidth = w - 130;
+  // Horizontal room clear of the bevel and the screw heads (34px inset,
+  // 9px radius); vertical room so the assembled block never runs into the
+  // bevel top or bottom, however many lines it ends up needing.
+  const marginX = 130;
+  const marginY = 60;
+  const maxWidth = w - marginX * 2;
+  const availH = h - marginY * 2;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   const titleFont = (px: number) => `600 ${px}px ${family}`;
   const authorFont = (px: number) => `italic 400 ${px}px ${family}`;
 
-  const title = fitText(ctx, text.title, titleFont, 165, 92, maxWidth, 3);
-  const author = text.author
-    ? fitText(ctx, text.author, authorFont, 105, 66, maxWidth, 2)
-    : { lines: [], px: 0 };
-  // "Series" gets its own line rather than an interpunct after the author:
-  // joined, a long byline wraps and leaves the separator dangling.
-  const seriesPx = Math.round((author.px || 96) * 0.76);
+  // Fitting the title and the author independently (the old approach) can
+  // still overflow the plate: each fits its own width and line budget, but
+  // nothing checks the assembled height of title + rule + author + series
+  // against the plate. So step both ceilings down together — title falls
+  // faster, keeping it visibly the larger of the two — and re-wrap until
+  // the whole block fits, holding each as large as that allows. The maxLines
+  // caps below (3 for wrapped words is bounded by the amount of shrinking
+  // needed) are still what fitText enforces; more than a handful of steps
+  // never happen for real book titles.
+  const titleMax = 165, titleFloor = 34;
+  const authorMax = 105, authorFloor = 22;
+  let titleCeil = titleMax;
+  let authorCeil = authorMax;
+  let title: { lines: string[]; px: number };
+  let author: { lines: string[]; px: number };
+  let seriesPx: number;
+  let titleLh: number, authorLh: number, seriesH: number, rule: number, blockH: number;
+  for (;;) {
+    title = fitText(ctx, text.title, titleFont, titleCeil, titleFloor, maxWidth, 3);
+    author = text.author
+      ? fitText(ctx, text.author, authorFont, authorCeil, authorFloor, maxWidth, 2)
+      : { lines: [], px: 0 };
+    // "Series" gets its own line rather than an interpunct after the author:
+    // joined, a long byline wraps and leaves the separator dangling.
+    seriesPx = Math.round((author.px || 96) * 0.76);
 
-  const titleLh = title.px * 1.08;
-  const authorLh = author.px * 1.22;
-  const seriesH = text.series ? seriesPx * 1.5 : 0;
-  const rule = author.lines.length || text.series ? 46 : 0;
-  const titleH = title.lines.length * titleLh;
-  const authorH = author.lines.length * authorLh;
-  let y = h / 2 - (titleH + rule + authorH + seriesH) / 2 + titleLh / 2;
+    titleLh = title.px * 1.08;
+    authorLh = author.px * 1.22;
+    seriesH = text.series ? seriesPx * 1.5 : 0;
+    rule = author.lines.length || text.series ? 46 : 0;
+    blockH = title.lines.length * titleLh + rule + author.lines.length * authorLh + seriesH;
+
+    if (blockH <= availH || (titleCeil <= titleFloor && authorCeil <= authorFloor)) break;
+    titleCeil = Math.max(titleFloor, titleCeil - 3);
+    authorCeil = Math.max(authorFloor, authorCeil - 2);
+  }
+  let y = h / 2 - blockH / 2 + titleLh / 2;
 
   /* Engraving: dark fill with a hair of light below, so it reads as cut
      into the metal rather than printed on it. */
@@ -460,7 +501,7 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
   }
   if (rule) {
     // A short rule between the two, the width of a museum label's.
-    const ry = y - titleLh / 2 + rule / 2;
+    const ry = y + rule / 2;
     ctx.lineWidth = 3;
     ctx.strokeStyle = glint;
     ctx.beginPath();
@@ -473,7 +514,7 @@ export function plaqueCanvas(text: PlaqueText, family: string): HTMLCanvasElemen
     ctx.lineTo(w / 2 + 90, ry);
     ctx.stroke();
 
-    y += rule - titleLh / 2;
+    y += rule;
     if (author.lines.length) {
       y += authorLh / 2;
       ctx.font = authorFont(author.px);

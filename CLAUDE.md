@@ -112,8 +112,8 @@ npm run build   # astro check && astro build && pagefind --site dist
   three.js in `src/scripts/corridor/` (`corridor.ts` scene, `input.ts` keys /
   drag / touch stick, `textures.ts` procedural surfaces, plaques and the
   painted ceiling, `frames.ts` the five mouldings, `props.ts` plants,
-  benches and the runner, `walkway.ts` the parked moving walkway,
-  `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
+  benches and the runner, `ends.ts` the two open ends, `walkway.ts` the
+  parked moving walkway, `palette.ts` theme tokens). The data is still `src/data/curiosity.ts`, in
   the same order: entry 0 hangs first, on the left, and they alternate walls.
   The old 2D `CuriosityTimeline.astro` is not parked — it is the fallback,
   swapped in from a `<template>` when WebGL is missing (iOS Lockdown Mode,
@@ -190,8 +190,9 @@ npm run build   # astro check && astro build && pagefind --site dist
   connector and cover strip match the line beside it. It ends on `--accent`, so
   the arc lands on a colour the palette already owns. Titles there still take
   the amber `mark-hover` like every other list link.
-- **The corridor spends no new colour either.** Walls are `--muted`, the far
-  end fogs into a shade below it, the light over each frame samples the same
+- **The corridor spends no new colour either.** Walls are `--muted`, the
+  middle distance fogs into a shade below it, the light over each frame
+  samples the same
   five-stop arc (`--ct-tint-1..5`, mixed in oklab to match the CSS), and both
   themes are read live from the tokens — toggling re-paints the scene. Gilt,
   walnut and brass are materials, not palette. Text in the scene is metadata
@@ -211,7 +212,15 @@ npm run build   # astro check && astro build && pagefind --site dist
   the sRGB tint has to be converted going in — pass it straight through and
   the whole ceiling comes out grey. Plants, benches and the runner
   (`props.ts`) are furniture in the same sense gilt and brass are
-  materials. The lights are deliberately weak — the lantern on the camera
+  materials. **Both ends open onto sky** (`ends.ts`) rather than closing on
+  a wall — an arched opening with a stone surround and a balustrade, and
+  beyond it a sky whose horizon takes the arc stop nearest that end: dawn
+  gold where the reading starts, evening slate where it has got to. That is
+  the corridor making the same claim the 2D spine makes by fading out at
+  both ends instead of stopping. The sky planes are unlit and drawn as
+  bands, not detail — from just inside an opening the plane is magnified
+  enormously and a gradient survives that where a picture would not.
+  The lights are deliberately weak — the lantern on the camera
   especially, since it hits every picture head-on — because the failure mode
   here is a blown-out cover, not a dim hall; the additive glow decals do the
   work of looking lit. The moving walkway down the middle (`walkway.ts`) is
