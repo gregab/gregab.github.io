@@ -220,7 +220,22 @@ npm run build   # astro check && astro build && pagefind --site dist
   its lines catching the light. It was a per-bay crossfade before, and read
   as beige at the gold end, which is the end everyone sees first. Plants, benches and the runner
   (`props.ts`) are furniture in the same sense gilt and brass are
-  materials. **Both ends open onto sky** (`ends.ts`) rather than closing on
+  materials. **How the books are shown is one switch**, `DISPLAY` at the top
+  of `corridor.ts`: `"wall"` hangs them flat on the walls, `"float"`
+  suspends them in mid air down both sides of a central aisle. Float is on.
+  Walking a hall is a bad way to look at things hung flat along it — you see
+  every picture edge-on until you are level with it, and by then you have
+  passed it — so floating turns each book about 30° out of the wall to face
+  whoever is walking at it, paints it on both faces (a box's +z and -z faces
+  each carry the map the right way round, so one texture reads correctly
+  from in front and behind), moulds the frame on both sides, hangs the label
+  underneath instead of beside, and narrows the walkable band to the aisle
+  between the two rows. A floating picture has only a ceiling spot raking
+  both its faces, so it carries more of its own light — the emissive map
+  goes from a legibility floor to something nearer a lightbox, which is what
+  a dim gallery would use anyway. Everything downstream reads `FLOATING`;
+  flip the one word and the hall goes back on the walls.
+  **Both ends open onto sky** (`ends.ts`) rather than closing on
   a wall — an arched opening with a stone surround and a balustrade, and
   beyond it a sky whose horizon takes the arc stop nearest that end: dawn
   gold where the reading starts, evening slate where it has got to. That is
