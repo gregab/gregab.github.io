@@ -1,12 +1,24 @@
 /*
-  Input for the corridor: keys (WASD / arrows), mouse-drag look, and on touch
+  Input for the corridor: keys (WASD / arrows), mouse look, and on touch
   screens a floating stick in the lower-left plus drag-to-look everywhere
   else — the layout every mobile first-person game uses, so nobody has to
   learn it.
 
-  The keyboard is only captured while the corridor has focus or the pointer
-  is over it. Arrow keys still scroll the rest of the page.
+  Mouse look is Pointer Lock, the FPS convention: click the canvas to hide
+  and capture the cursor, then every mouse move turns the camera, click
+  again to open the book you're facing, Escape lets go (the browser does
+  that part on its own — exiting lock needs no code here). Where Pointer
+  Lock isn't available at all, mouse input falls back to the old
+  drag-to-look-and-tap scheme instead of failing silently; touch never uses
+  lock, since a hidden system cursor isn't a touch-screen concept.
+
+  The keyboard is only captured while the corridor has focus, the pointer
+  is over it, or the pointer is locked to it. Arrow keys still scroll the
+  rest of the page.
 */
+
+export const LOCK_SUPPORTED =
+  typeof document !== "undefined" && "pointerLockElement" in document;
 
 export interface InputFrame {
   /** -1 (back) .. 1 (forward) */
@@ -20,6 +32,8 @@ export interface InputFrame {
   lookDx: number;
   lookDy: number;
   lookPointer: "mouse" | "touch" | "pen";
+  /** Pointer Lock is engaged on the canvas — mouse-look is live. */
+  locked: boolean;
   /** Any input at all this frame — used to decide whether to render. */
   active: boolean;
 }
@@ -53,6 +67,7 @@ const KEYS_HANDLED = new Set([
 export class Controls {
   private keys = new Set<string>();
   private hovering = false;
+  private locked = false;
   private lookDx = 0;
   private lookDy = 0;
   private lookPointer: InputFrame["lookPointer"] = "mouse";
@@ -80,6 +95,9 @@ export class Controls {
     window.addEventListener("keyup", this.onKeyUp, opts);
     window.addEventListener("blur", this.clearKeys, opts);
     document.addEventListener("visibilitychange", this.clearKeys, opts);
+    if (LOCK_SUPPORTED) {
+      document.addEventListener("pointerlockchange", this.onLockChange, opts);
+    }
 
     root.addEventListener("pointerenter", this.onEnter, opts);
     root.addEventListener("pointerleave", this.onLeave, opts);
@@ -99,6 +117,7 @@ export class Controls {
   dispose(): void {
     this.abort.abort();
     this.hideStick();
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
 
   /** Read and reset the per-frame accumulators. */
@@ -122,6 +141,7 @@ export class Controls {
       lookDx: this.lookDx,
       lookDy: this.lookDy,
       lookPointer: this.lookPointer,
+      locked: this.locked,
       active:
         forward !== 0 || strafe !== 0 || turn !== 0 ||
         this.lookDx !== 0 || this.lookDy !== 0 || this.turnedThisFrame,
@@ -135,7 +155,7 @@ export class Controls {
   /* ---- keyboard -------------------------------------------------------- */
 
   private keysActive(): boolean {
-    return this.hovering || this.root.matches(":focus-within");
+    return this.hovering || this.locked || this.root.matches(":focus-within");
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
@@ -189,8 +209,20 @@ export class Controls {
 
   private onPointerDown = (e: PointerEvent): void => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    const p = this.local(e);
     this.canvas.focus({ preventScroll: true });
+
+    // Pointer Lock owns mouse look entirely: the first click engages it
+    // (consumed here, not also opening whatever's under the crosshair), and
+    // every click after that is the FPS convention of activating whatever
+    // you're facing. Pens fall through to the drag scheme below — Pointer
+    // Lock support for them is too spotty to build on.
+    if (e.pointerType === "mouse" && LOCK_SUPPORTED) {
+      if (this.locked) this.cb.onActivate();
+      else this.canvas.requestPointerLock()?.catch(() => {});
+      return;
+    }
+
+    const p = this.local(e);
     this.canvas.setPointerCapture?.(e.pointerId);
 
     if (
@@ -227,6 +259,19 @@ export class Controls {
       this.turnedThisFrame = true;
       return;
     }
+    if (this.locked && e.pointerType === "mouse") {
+      // Coalesced events keep a fast look smooth on high-rate mice.
+      const events = e.getCoalescedEvents?.() ?? [e];
+      let dx = 0, dy = 0;
+      for (const ev of events) {
+        dx += ev.movementX;
+        dy += ev.movementY;
+      }
+      this.lookDx += dx;
+      this.lookDy += dy;
+      this.lookPointer = "mouse";
+      return;
+    }
     if (e.pointerId === this.lookId) {
       // Coalesced events keep a fast drag smooth on high-rate screens.
       const events = e.getCoalescedEvents?.() ?? [e];
@@ -250,9 +295,19 @@ export class Controls {
       }
       return;
     }
-    if (e.pointerType === "mouse" && e.buttons === 0) {
+    if (!this.locked && e.pointerType === "mouse" && e.buttons === 0) {
       const p = this.local(e);
       this.cb.onHover(p.x, p.y);
+    }
+  };
+
+  private onLockChange = (): void => {
+    this.locked = document.pointerLockElement === this.canvas;
+    // A stray movementX/Y spike can arrive with the event that un-hides the
+    // cursor; drop anything already queued rather than snap the camera.
+    if (!this.locked) {
+      this.lookDx = 0;
+      this.lookDy = 0;
     }
   };
 

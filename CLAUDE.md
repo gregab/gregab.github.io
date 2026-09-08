@@ -285,8 +285,14 @@ npm run build   # astro check && astro build && pagefind --site dist
   it and idles the render loop for its tread. With it off nothing animates
   at rest, so the scene renders only on input. Controls follow
   convention and should stay conventional: W A S D / arrows on a keyboard
-  (arrows turn, A/D strafe), drag to look, a floating stick in the
-  lower-left on touch with drag-to-look elsewhere. The caption pill sits at
+  (arrows turn, A/D strafe), mouse look via Pointer Lock — click the canvas
+  to capture the cursor, move to turn, click again to open whatever's under
+  the crosshair, Escape releases it (native browser behavior, not app code)
+  — a floating stick in the lower-left on touch with drag-to-look elsewhere
+  (touch never locks the pointer; that's a hidden-cursor idea with no touch
+  equivalent), and the old drag-to-look as the fallback where Pointer Lock
+  isn't supported at all. `input.ts` owns all of this; `LOCK_SUPPORTED`
+  there is the one flag gating it. The caption pill sits at
   the top, clear of the plaque under every frame; on touch it becomes a
   full-width band and the fullscreen button moves to the bottom-right.
 - **That spine is a double-headed arrow that fades out at both ends**, and the

@@ -34,7 +34,7 @@ import {
   readCoverCache,
   writeCoverCache,
 } from "@/lib/coverCache";
-import { Controls } from "./input";
+import { Controls, LOCK_SUPPORTED } from "./input";
 import { Ends } from "./ends";
 import { Props } from "./props";
 import { type WindowSpot, Windows } from "./windows";
@@ -258,6 +258,8 @@ export class Corridor {
   private aimedIndex = -1;
   private hoverPoint: { x: number; y: number } | null = null;
   private highlightIndex = -1;
+  /** Pointer Lock engaged — mouse aim comes from the crosshair, not a cursor. */
+  private locked = false;
 
   // Adaptive resolution
   private dpr: number;
@@ -349,6 +351,7 @@ export class Corridor {
 
     this.setupFullscreen();
     if (this.coarse) els.root.dataset.touch = "1";
+    if (!LOCK_SUPPORTED) els.root.dataset.noLock = "1";
 
     // Plaques and placeholders want the real serif; redraw once it's in.
     void loadFonts(this.family).then(() => {
@@ -997,6 +1000,11 @@ export class Corridor {
 
   /** Advance the player. Returns true if the view changed. */
   private step(input: ReturnType<Controls["consume"]>, dt: number): boolean {
+    if (input.locked !== this.locked) {
+      this.locked = input.locked;
+      this.els.root.classList.toggle("is-locked", this.locked);
+      this.needsRender = true;
+    }
     const sens = input.lookPointer === "mouse" ? LOOK_MOUSE : LOOK_TOUCH;
     this.yaw -= input.lookDx * sens;
     this.pitch -= input.lookDy * sens;
@@ -1129,11 +1137,18 @@ export class Corridor {
   }
 
   private updateAim(): void {
-    const hovered = this.hoverPoint ? this.castAt(this.hoverPoint.x, this.hoverPoint.y) : null;
+    // Locked, the crosshair is always screen-centre — there's no cursor
+    // position to speak of, so re-cast the same point against whichever way
+    // the camera is currently facing.
+    const point = this.locked
+      ? { x: this.els.root.clientWidth / 2, y: this.els.root.clientHeight / 2 }
+      : this.hoverPoint;
+    const hovered = point ? this.castAt(point.x, point.y) : null;
     const hoverIndex = hovered ? hovered.index : -1;
     if (hoverIndex !== this.hoverIndex) {
       this.hoverIndex = hoverIndex;
       this.els.canvas.style.cursor = hovered ? "pointer" : "";
+      this.els.root.classList.toggle("is-aimable", hovered !== null);
     }
     const aimed = hovered ?? this.nearestFacing();
     const aimedIndex = aimed ? aimed.index : -1;

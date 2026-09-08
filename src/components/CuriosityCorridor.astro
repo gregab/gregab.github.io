@@ -48,6 +48,9 @@ const payload = JSON.stringify(
   </div>
   <div class="corridor-stick-hint" aria-hidden="true"></div>
 
+  <div class="corridor-crosshair" aria-hidden="true"></div>
+  <div class="corridor-lock-hint font-ui" aria-hidden="true">Click to look around</div>
+
   <a
     class="corridor-label font-ui"
     data-label
@@ -90,7 +93,8 @@ const payload = JSON.stringify(
 <p class="corridor-help font-ui text-muted-foreground" data-corridor-help>
   <span class="corridor-help-keys">
     Walk with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow
-    keys · drag to look around · click a frame to open it on Goodreads
+    keys · click to look around, <kbd>Esc</kbd> lets go · click a frame to
+    open it on Goodreads
   </span>
   <span class="corridor-help-touch">
     Drag in the lower left to walk · drag anywhere else to look around ·
@@ -232,6 +236,72 @@ const payload = JSON.stringify(
     background: rgb(255 255 255 / 0.35);
   }
   .corridor[data-touch]:not(.is-stick) .corridor-stick-hint {
+    display: block;
+  }
+
+  /* ---- pointer lock ------------------------------------------------------
+     The FPS crosshair: invisible until the pointer is locked, then a small
+     ring that fills solid and grows when it lands on a clickable frame.
+     White with a difference blend rather than a palette colour, because the
+     wall behind it shifts through the whole five-stop arc as you walk the
+     hall — no fixed hue would stay legible against all of it. */
+  .corridor-crosshair {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border: 1.5px solid #fff;
+    border-radius: 50%;
+    mix-blend-mode: difference;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+  }
+  .corridor.is-locked .corridor-crosshair {
+    opacity: 0.85;
+  }
+  .corridor.is-locked.is-aimable .corridor-crosshair {
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background: #fff;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .corridor-crosshair {
+      transition:
+        width 120ms ease,
+        height 120ms ease,
+        margin 120ms ease,
+        opacity 120ms ease,
+        background 120ms ease;
+    }
+  }
+
+  /* The invitation to engage it: shown until the first click, and again
+     any time Escape lets go. Not for touch, and not where Pointer Lock
+     isn't supported at all — there, mouse input quietly falls back to the
+     old drag-to-look instead of asking for a click that would do nothing. */
+  .corridor-lock-hint {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: rgb(22 15 10 / 0.55);
+    color: #f5eee4;
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    display: none;
+  }
+  .corridor.is-ready:not(.is-locked):not([data-touch]):not([data-no-lock])
+    .corridor-lock-hint {
     display: block;
   }
 
